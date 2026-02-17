@@ -61,3 +61,47 @@ class RegexLanguageParser(LanguageParserPort):
                     break # Match only one pattern per line
                     
         return nodes
+
+    def parse_imports(self, content: str, file_extension: str) -> List[str]:
+        imports = []
+        lines = content.splitlines()
+        
+        # Regex for imports
+        pattern = None
+        
+        if file_extension in {'.kt', '.java'}:
+            # import com.example.Foo
+            pattern = r'^\s*import\s+([\w\.]+)'
+        elif file_extension in {'.py'}:
+            # import foo
+            # from foo import bar
+            # We want 'foo' from 'import foo' or 'foo' from 'from foo import bar'
+            # This is tricky with regex. Let's just grab the whole line for audit purposes or simple extraction.
+            # But the contract returns List[str]. 
+            # For Python audit, we might need the full import line to check "from ... import ...". 
+            # But let's stick to extraction of the *module* name if possible.
+            pass # TODO: Python import parsing
+        elif file_extension in {'.ts', '.tsx', '.js', '.jsx'}:
+            # import ... from '...'
+            # import '...'
+            pattern = r'^\s*import\s+(?:.*from\s+)?[\'"]([^\'"]+)[\'"]'
+
+        if not pattern and file_extension not in {'.py'}:
+             return []
+
+        for line in lines:
+            if file_extension in {'.kt', '.java', '.ts', '.tsx', '.js', '.jsx'}:
+                match = re.search(pattern, line)
+                if match:
+                    imports.append(match.group(1))
+            elif file_extension == '.py':
+                 # Simple Python logic (fallback)
+                 line = line.strip()
+                 if line.startswith("import "):
+                     parts = line.split(" ")
+                     if len(parts) > 1: imports.append(parts[1])
+                 elif line.startswith("from "):
+                     parts = line.split(" ")
+                     if len(parts) > 1: imports.append(parts[1])
+                     
+        return imports

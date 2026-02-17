@@ -12,6 +12,7 @@ class CodeInspectionPlugin:
         
         parser_read = subparsers.add_parser("read", help="Read files with line numbers")
         parser_read.add_argument("file", help="File path")
+        parser_read.add_argument("--selection", help="Line range (start:end, 1-based)")
         parser_read.set_defaults(func=lambda args: self.handle_read(args, context))
 
         # Usages Command
@@ -28,12 +29,28 @@ class CodeInspectionPlugin:
         if os.path.exists(args.file):
             content = context.file_system.read_file(args.file)
             lines = content.splitlines()
+            
+            start_line = 1
+            end_line = len(lines)
+            
+            if args.selection:
+                try:
+                    parts = args.selection.split(':')
+                    start_line = int(parts[0])
+                    if len(parts) > 1:
+                        end_line = int(parts[1])
+                except ValueError:
+                    print(f"❌ Invalid selection format: {args.selection}. Use start:end (e.g. 10:20)")
+                    return
+
             print(f"File Path: `file://{os.path.abspath(args.file)}`")
             print(f"Total Lines: {len(lines)}")
             print(f"Total Bytes: {len(content)}")
-            print(f"Showing lines 1 to {len(lines)}")
-            for i, line in enumerate(lines):
-                 print(f"{i+1}: {line}")
+            print(f"Showing lines {start_line} to {end_line}")
+            
+            for i in range(start_line - 1, end_line):
+                if i < len(lines):
+                    print(f"{i+1}: {lines[i]}")
         else:
             print(f"❌ File not found: {args.file}")
 

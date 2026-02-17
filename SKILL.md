@@ -1,13 +1,13 @@
 ---
 name: a-i-d-e
-description: Agent Integrated Development Environment (CLI Tool)
+description: Agent Interface for Deterministic Editing (CLI Tool)
 binary: ./a-i-d-e/aide.py
 ---
 
 # a-i-d-e
 
 CLI tool for deterministic file operations & refactoring.
-Supported Languages: **Kotlin, TypeScript, JavaScript, Python**.
+Supported Languages: **Kotlin, TypeScript, JavaScript, Python, C#, Rust, Go, C++, Scala, Ruby**.
 
 ## Commands
 
@@ -18,12 +18,12 @@ Structural symbol discovery.
 
 ### `read`
 Line-numbered file retrieval.
-- **Args**: `file` (path)
-- **Invoke**: `./a-i-d-e/aide.py read <path>`
+- **Args**: `file` (path), `--selection <range>` (optional)
+- **Invoke**: `./a-i-d-e/aide.py read <path> [--selection start:end]`
 
 ### `cleanup`
 Automated code hygiene.
-- **Tasks**: Remove unused imports (.kt)
+- **Tasks**: Remove unused imports (.kt), Remove duplicate imports (.kt, .ts, .js, .py)
 - **Args**: `--path <dir>` (default: .)
 - **Invoke**: `./a-i-d-e/aide.py cleanup [--path <path>]`
 
@@ -49,7 +49,16 @@ Refactor: Extract code block to function.
   - `--name`: New function name
   - `--scope`: Visibility (private, internal, public)
 - **Invoke**: `./a-i-d-e/aide.py extract --file <path> --selection <range> --name <name> [--scope <s_>] [-n]`
-*(Supports Kotlin, TS/JS, Python)*
+*(Supports Kotlin, TS/JS, Python, C#, Rust, Go, C++, Scala, Ruby)*
+
+### `extract-interface`
+Refactor: Create interface from class and implement it.
+- **Args**:
+  - `--file`: File path
+  - `--class-name`: Class to extract from
+  - `--interface-name`: Optional new interface name
+- **Invoke**: `./a-i-d-e/aide.py extract-interface --file <path> --class-name <name> [--interface-name <name>] [-n]`
+*(Supports Kotlin)*
 
 ### `usages`
 Inspection: Find symbol usages.
@@ -66,7 +75,7 @@ Refactor: Update function definition and call sites.
   - `--default-value`: Value for existing calls (e.g. `0`)
   - `--root`: Project root
 - **Invoke**: `./a-i-d-e/aide.py change-signature <symbol> --add-param <def> --default-value <val> [-n]`
-*(Supports Kotlin, TS/JS, Python)*
+*(Supports Kotlin, TS/JS, Python, C#, Rust, Go, C++, Scala, Ruby)*
 
 ### `move-symbol`
 Refactor: Move top-level symbol to another file.
@@ -78,7 +87,7 @@ Refactor: Move top-level symbol to another file.
   - Automatically merges required imports into destination.
   - Updates project-wide references if the symbol moves to a different package.
 - **Invoke**: `./a-i-d-e/aide.py move-symbol <symbol> --source <src> --dest <dest> [-n]`
-*(Supports Kotlin, TS/JS, Python)*
+*(Supports Kotlin, TS/JS, Python, C#, Rust, Go, C++, Scala, Ruby)*
 
 ### `rename-symbol`
 Refactor: Rename symbol project-wide with regex-safe whole-word matching.

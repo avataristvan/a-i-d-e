@@ -12,6 +12,7 @@ class CleanupPlugin:
     def run(self, args, context: Context):
         print(f"🧹 Running cleanup on {args.path}...")
         self.remove_unused_imports(args.path, context)
+        self.remove_duplicate_imports(args.path, context)
         print("✅ Cleanup Complete.")
 
     def remove_unused_imports(self, root_path: str, context: Context):
@@ -63,3 +64,42 @@ class CleanupPlugin:
 
         print(f"   Files cleaned: {files_cleaned}")
         print(f"   Unused imports removed: {total_removed}")
+
+    def remove_duplicate_imports(self, root_path: str, context: Context):
+        print("   - Scanning for duplicate imports...")
+        files_cleaned = 0
+        total_removed = 0
+        
+        for file_path in context.file_system.walk_files(root_path):
+            if not file_path.endswith((".kt", ".ts", ".js", ".py")):
+                continue
+                
+            content = context.file_system.read_file(file_path)
+            lines = content.split('\n')
+            
+            seen_imports = set()
+            new_lines = []
+            duplicates_found = 0
+            
+            for line in lines:
+                stripped = line.strip()
+                # Unified heuristic for imports across languages
+                is_import = stripped.startswith(("import ", "from "))
+                
+                if is_import:
+                    if stripped in seen_imports:
+                        duplicates_found += 1
+                        continue # Skip duplicate
+                    seen_imports.add(stripped)
+                
+                new_lines.append(line)
+
+            if duplicates_found > 0:
+                new_content = '\n'.join(new_lines)
+                context.file_system.write_file(file_path, new_content)
+                files_cleaned += 1
+                total_removed += duplicates_found
+                print(f"     - Removed {duplicates_found} duplicates in {file_path}")
+
+        print(f"   Files cleaned: {files_cleaned}")
+        print(f"   Duplicate imports removed: {total_removed}")

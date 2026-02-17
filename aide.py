@@ -34,4 +34,16 @@ def main():
         parser.print_help()
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        import traceback
+        # Print a friendly error message to stderr
+        print(f"\033[91mError: {str(e)}\033[0m", file=sys.stderr)
+        
+        # Log full traceback to a file (or print if verbose, but let's stick to file/simple for now)
+        # We can also print the traceback if it's a critical error
+        # For now, let's print the traceback to stderr as well, but maybe less obtrusively?
+        # Actually, let's just print it. The user is a dev.
+        traceback.print_exc()
+        sys.exit(1)

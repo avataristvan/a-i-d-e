@@ -17,6 +17,7 @@ class RefactorPlugin:
         extract_parser = subparsers.add_parser("extract", help="Extract code block to function")
         extract_parser.add_argument("--file", required=True, help="File path")
         extract_parser.add_argument("--selection", required=True, help="Line range (start:end, 1-based)")
+        extract_parser.add_argument("--name", required=True, help="New function name")
         extract_parser.add_argument("--scope", default="private", help="Visibility (private, internal, public)")
         extract_parser.add_argument("--dry-run", "-n", action="store_true", help="Preview changes without writing to files")
         extract_parser.set_defaults(func=lambda args: self.handle_extract(args, context))
@@ -45,6 +46,26 @@ class RefactorPlugin:
         rename_parser.add_argument("--root", default=".", help="Project root")
         rename_parser.add_argument("--dry-run", "-n", action="store_true", help="Preview changes without writing to files")
         rename_parser.set_defaults(func=lambda args: self.handle_rename_symbol(args, context))
+
+        # aide refactor extract-interface
+        ext_int_parser = subparsers.add_parser("extract-interface", help="Extract interface from class")
+        ext_int_parser.add_argument("--file", required=True, help="File path")
+        ext_int_parser.add_argument("--class-name", required=True, help="Class name to extract from")
+        ext_int_parser.add_argument("--interface-name", help="New interface name (default: same as class)")
+        ext_int_parser.add_argument("--dry-run", "-n", action="store_true", help="Preview changes without writing to files")
+        ext_int_parser.set_defaults(func=lambda args: self.handle_extract_interface(args, context))
+
+    def handle_extract_interface(self, args, context: Context):
+        from aide.features.code_refactoring.application.extract_interface import ExtractInterfaceUseCase
+        
+        print(f"🧬 Extracting interface from '{args.class_name}' in {args.file}...")
+        use_case = ExtractInterfaceUseCase(context.file_system, context.language_parser, context.strategy_provider)
+        success = use_case.execute(args.file, args.class_name, args.interface_name, dry_run=args.dry_run)
+        
+        if success:
+            print(f"✅ Interface extraction complete.")
+        else:
+            print(f"❌ Interface extraction failed.")
 
     def handle_rename_symbol(self, args, context: Context):
         from aide.features.code_refactoring.application.smart_rename import SmartRenameUseCase

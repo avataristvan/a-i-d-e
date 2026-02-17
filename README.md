@@ -1,7 +1,7 @@
 # a-i-d-e
-**Agent Integrated Development Environment**
+**Agent Interface for Deterministic Editing**
 
-AIDE is a specialized CLI tool designed to empower AI Agents with deterministic code analysis and refactoring capabilities across multiple languages (**Kotlin, TypeScript, JavaScript, Python**). While it runs in a standard terminal, its primary "users" are automated sub-agents.
+AIDE is a specialized CLI tool designed to empower AI Agents with deterministic code analysis and refactoring capabilities across multiple languages (**Kotlin, TypeScript, JavaScript, Python, C#, Rust, Go, C++, Scala, Ruby**). While it runs in a standard terminal, its primary "users" are automated sub-agents.
 
 ## Navigator's Guide (Setup for Agents)
 
@@ -37,6 +37,7 @@ Once these steps are complete, any AI agent interacting with your repository wil
 - **Kotlin**: Full refactoring support including `move-package` and `cleanup`.
 - **TypeScript / JavaScript**: Native ESM support for `move-symbol`, `extract`, and `change-signature`.
 - **Python**: Self-hosting ready. Supports `move-symbol`, `extract`, and `change-signature`.
+- **C#, Rust, Go, C++, Scala, Ruby**: Native support for `move-symbol`, `extract`, and `change-signature`.
 
 ## Philosophy
 

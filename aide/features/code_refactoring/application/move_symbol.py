@@ -173,9 +173,15 @@ class MoveSymbolUseCase:
             if file_path.endswith(extensions):
                 content = self.file_system.read_file(file_path)
                 if old_text in content:
-                    print(f"   Updating {os.path.relpath(file_path)}")
-                    if not dry_run:
-                        # Use replace - for imports it is safe as it's fully qualified
+                    if new_text in content:
+                        # If the new import already exists, just remove the old one (to avoid duplicates)
+                        # We need to be careful with line breaks.
+                        print(f"   Removing redundant {old_text} from {os.path.relpath(file_path)}")
+                        new_content = content.replace(old_text + "\n", "").replace(old_text, "")
+                    else:
+                        print(f"   Updating {os.path.relpath(file_path)}")
                         new_content = content.replace(old_text, new_text)
+                    
+                    if not dry_run:
                         self.file_system.write_file(file_path, new_content)
 

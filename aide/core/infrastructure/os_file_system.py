@@ -5,6 +5,10 @@ from aide.core.domain.ports import FileSystemPort
 
 class OsFileSystem(FileSystemPort):
     def walk_files(self, root_path: str) -> Generator[str, None, None]:
+        if os.path.isfile(root_path):
+            yield os.path.abspath(root_path)
+            return
+
         for root, dirs, files in os.walk(root_path):
             ignores = {".git", "__pycache__", "node_modules", ".next", "build", ".gradle", ".idea", "bin", "obj"}
             # Use list(dirs) to avoid issues with modification during iteration
