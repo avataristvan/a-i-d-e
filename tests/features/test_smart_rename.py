@@ -4,7 +4,7 @@ from aide.features.code_refactoring.application.smart_rename import SmartRenameU
 from aide.core.infrastructure.os_file_system import OsFileSystem
 
 def test_smart_rename(temp_dir):
-    fs = OsFileSystem()
+    fs = OsFileSystem(jailed_root=temp_dir)
     test_file = os.path.join(temp_dir, "test.py")
     fs.write_file(test_file, "def old_func():\n    old_func()\n")
     
@@ -20,7 +20,7 @@ def test_smart_rename(temp_dir):
     assert "old_func" not in content
 
 def test_smart_rename_dry_run(temp_dir):
-    fs = OsFileSystem()
+    fs = OsFileSystem(jailed_root=temp_dir)
     test_file = os.path.join(temp_dir, "test.kt")
     fs.write_file(test_file, "val oldVar = 1\n")
     

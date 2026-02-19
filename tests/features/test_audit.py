@@ -4,6 +4,7 @@ from argparse import Namespace
 from aide.features.architecture_audit.plugin import ArchitectureAuditPlugin
 from aide.core.context import Context
 from aide.parsing.domain.models import SymbolNode
+from aide.core.infrastructure.os_file_system import OsFileSystem
 
 class MockParser:
     def parse_imports(self, content, ext):
@@ -23,7 +24,8 @@ def test_audit_kotlin(temp_dir):
     with open(bad_file, "w", encoding="utf-8") as f:
         f.write("package domain\nimport com.infrastructure.Bad\nclass Bad {}\n")
         
-    context = Context(file_system=None, language_parser=MockParser(), strategy_provider=None)
+    fs = OsFileSystem(jailed_root=temp_dir)
+    context = Context(file_system=fs, language_parser=MockParser(), strategy_provider=None)
     plugin = ArchitectureAuditPlugin()
     
     args = Namespace(stack="kotlin", src=temp_dir)

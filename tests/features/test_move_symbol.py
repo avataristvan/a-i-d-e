@@ -26,7 +26,7 @@ class MockStrategyProvider:
     def get_strategy_for_extension(self, ext): return MockStrategy()
 
 def test_move_symbol(temp_dir):
-    fs = OsFileSystem()
+    fs = OsFileSystem(jailed_root=temp_dir)
     src_file = os.path.join(temp_dir, "src.kt")
     dest_file = os.path.join(temp_dir, "dest.kt")
     
@@ -38,7 +38,7 @@ def test_move_symbol(temp_dir):
     
     # We also mock SmartRenameUseCase inside MoveSymbol
     use_case = MoveSymbolUseCase(fs, parser, provider)
-    success = use_case.execute(src_file, "Foo", dest_file, dry_run=False)
+    success = use_case.execute(src_file, "Foo", dest_file, dry_run=False, root_path=temp_dir)
     
     assert success
     assert "class Foo" not in fs.read_file(src_file)

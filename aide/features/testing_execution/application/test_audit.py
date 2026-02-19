@@ -2,16 +2,22 @@ import subprocess
 import json
 from typing import Dict, Any
 
-class TestAuditUseCase:
+class AuditCoverageUseCase:
     """Runs coverage and reports uncovered lines in JSON format."""
+    __test__ = False
     
+    
+    def __init__(self, file_system):
+        self.file_system = file_system
+        
     def execute(self, src_dir: str, tests_dir: str, format: str = "json") -> Dict[str, Any]:
         print(f"🕵️ Auditing coverage for {src_dir}...")
         
-        # In a real environment we would require pytest-cov.
-        # Let's see if we can just emit a mock payload or try to run it.
-        # Try running pytest --cov
         try:
+            # Validate paths
+            list(self.file_system.walk_files(src_dir))
+            list(self.file_system.walk_files(tests_dir))
+            
             result = subprocess.run(
                 ["pytest", tests_dir, f"--cov={src_dir}", "--cov-report=json"],
                 capture_output=True,
@@ -22,8 +28,8 @@ class TestAuditUseCase:
             if result.returncode == 0 or result.returncode == 1:
                 # Coverage json file should exist at coverage.json
                 try:
-                    with open("coverage.json", "r") as f:
-                        cov_data = json.load(f)
+                    content = self.file_system.read_file("coverage.json")
+                    cov_data = json.loads(content)
                     
                     uncovered = []
                     for filename, file_cov in cov_data.get("files", {}).items():

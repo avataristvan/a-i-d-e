@@ -36,6 +36,7 @@ class RefactorPlugin:
         move_parser.add_argument("symbol", help="Symbol name (Function, Class, Object)")
         move_parser.add_argument("--source", required=True, help="Source file path")
         move_parser.add_argument("--dest", required=True, help="Destination file path")
+        move_parser.add_argument("--root", default=".", help="Project root")
         move_parser.add_argument("--dry-run", "-n", action="store_true", help="Preview changes without writing to files")
         move_parser.set_defaults(func=lambda args: self.handle_move_symbol(args, context))
 
@@ -160,7 +161,7 @@ class RefactorPlugin:
         
         print(f"🚚 Moving symbol '{args.symbol}' to {args.dest}...")
         use_case = MoveSymbolUseCase(context.file_system, context.language_parser, context.strategy_provider)
-        success = use_case.execute(args.source, args.symbol, args.dest, dry_run=args.dry_run)
+        success = use_case.execute(args.source, args.symbol, args.dest, dry_run=args.dry_run, root_path=args.root)
         
         if success:
             status = "Preview (No changes made)" if args.dry_run else ""

@@ -6,7 +6,7 @@ from aide.core.infrastructure.os_file_system import OsFileSystem
 from aide.features.code_refactoring.plugin import RefactorPlugin
 
 def test_handle_move_package(temp_dir, capsys):
-    fs = OsFileSystem()
+    fs = OsFileSystem(jailed_root=temp_dir)
     context = Context(file_system=fs, language_parser=None, strategy_provider=None)
     plugin = RefactorPlugin()
     

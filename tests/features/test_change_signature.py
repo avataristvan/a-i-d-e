@@ -23,7 +23,7 @@ class MockStrategyProvider:
     def get_strategy_for_extension(self, ext): return MockStrategy()
 
 def test_change_signature(temp_dir):
-    fs = OsFileSystem()
+    fs = OsFileSystem(jailed_root=temp_dir)
     test_file = os.path.join(temp_dir, "test.py")
     fs.write_file(test_file, "def foo():\n    pass\nfoo()\n")
     

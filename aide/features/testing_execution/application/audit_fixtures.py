@@ -19,31 +19,35 @@ class AuditFixturesUseCase:
         fixtures = {}
         usages = {}
         
-        for root, _, files in os.walk(tests_dir):
-            for file in files:
-                if file.endswith(".py"):
-                    path = os.path.join(root, file)
-                    content = self.file_system.read_file(path)
+        try:
+            files = list(self.file_system.walk_files(tests_dir))
+        except Exception as e:
+            print(f"❌ Failed to traverse path: {e}")
+            return {}
+
+        for path in files:
+            if path.endswith(".py"):
+                content = self.file_system.read_file(path)
+                
+                # Regex for fixture def: @pytest.fixture\ndef my_fixture(
+                defs = re.finditer(r'@pytest\.fixture(?:\(.*?\))?\s*def\s+([a-zA-Z0-9_]+)', content)
+                for d in defs:
+                    name = d.group(1)
+                    if name not in fixtures:
+                        fixtures[name] = []
+                    fixtures[name].append(path)
                     
-                    # Regex for fixture def: @pytest.fixture\ndef my_fixture(
-                    defs = re.finditer(r'@pytest\.fixture(?:\(.*?\))?\s*def\s+([a-zA-Z0-9_]+)', content)
-                    for d in defs:
-                        name = d.group(1)
-                        if name not in fixtures:
-                            fixtures[name] = []
-                        fixtures[name].append(path)
-                        
-                    # Find all test function signatures to see what they request
-                    # def test_something(my_fixture, other_fixture):
-                    tests = re.finditer(r'def\s+test_[a-zA-Z0-9_]+\s*\((.*?)\)', content)
-                    for t in tests:
-                        args_str = t.group(1)
-                        args = [a.strip() for a in args_str.split(',') if a.strip()]
-                        for arg in args:
-                            arg_name = arg.split(':')[0].strip() # remove type hints if any
-                            if arg_name not in usages:
-                                usages[arg_name] = 0
-                            usages[arg_name] += 1
+                # Find all test function signatures to see what they request
+                # def test_something(my_fixture, other_fixture):
+                tests = re.finditer(r'def\s+test_[a-zA-Z0-9_]+\s*\((.*?)\)', content)
+                for t in tests:
+                    args_str = t.group(1)
+                    args = [a.strip() for a in args_str.split(',') if a.strip()]
+                    for arg in args:
+                        arg_name = arg.split(':')[0].strip() # remove type hints if any
+                        if arg_name not in usages:
+                            usages[arg_name] = 0
+                        usages[arg_name] += 1
                             
         # Now correlate unused
         unused = []

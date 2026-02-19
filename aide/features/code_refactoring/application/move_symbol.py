@@ -8,7 +8,7 @@ class MoveSymbolUseCase:
         self.language_parser = language_parser
         self.strategy_provider = strategy_provider
 
-    def execute(self, source_file: str, symbol_names_str: str, dest_file: str, dry_run: bool = False) -> bool:
+    def execute(self, source_file: str, symbol_names_str: str, dest_file: str, dry_run: bool = False, root_path: str = ".") -> bool:
         try:
             source_path = os.path.abspath(source_file)
             dest_path = os.path.abspath(dest_file)
@@ -145,7 +145,7 @@ class MoveSymbolUseCase:
                 for symbol in symbols_actually_moved:
                     old_import = strategy.get_import_statement(source_pkg_name, symbol)
                     new_import = strategy.get_import_statement(dest_pkg_name, symbol)
-                    self._update_references(old_import, new_import, dry_run)
+                    self._update_references(old_import, new_import, dry_run, root_path)
 
             # 6. Write Files
             if moved_blocks:
@@ -165,9 +165,8 @@ class MoveSymbolUseCase:
             traceback.print_exc()
             return False
 
-    def _update_references(self, old_text: str, new_text: str, dry_run: bool):
+    def _update_references(self, old_text: str, new_text: str, dry_run: bool, root: str = "."):
         # Scan all supported files in project
-        root = "." 
         extensions = (".kt", ".java", ".py", ".ts", ".tsx", ".js", ".jsx")
         for file_path in self.file_system.walk_files(root):
             if file_path.endswith(extensions):

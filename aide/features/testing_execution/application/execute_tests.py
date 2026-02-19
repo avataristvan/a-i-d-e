@@ -5,15 +5,29 @@ from typing import Dict, Any
 class ExecuteTestsUseCase:
     """Wraps test execution and returns a machine-readable JSON payload of the results."""
     
+    def __init__(self, file_system):
+        self.file_system = file_system
+        
     def execute(self, path: str, format: str = "json") -> Dict[str, Any]:
         print(f"🔄 Running tests in {path}...")
         
         try:
-            # We use junitxml because it's built into pytest and doesn't require extra plugins
-            # However, parsing it is annoying in pure python without xml.etree.
-            # A simpler approach for AIDE: run pytest normally, grep for FAILURES.
-            # But wait, pytest-json-report is better. Let's just run pytest to standard output for now
-            # and format a simplistic dictionary if we don't have the plugin.
+            # Validate path through security jail
+            # OsFileSystem._secure_path is protected, but we can call a public method or just assume 
+            # that passing it to file_system methods will trigger the check.
+            # Here, we want to ensure the subprocess doesn't run on an external path.
+            # We can use a side-effect of walk_files or something, or just add a 'validate_path' to port if needed.
+            # For now, let's just use self.file_system.read_file on a non-existent file in that path or just 
+            # assume the caller gave us a path we should check.
+            
+            # Actually, let's just use os.path.abspath and check if it starts with jailed_root if we can access it.
+            # Since FileSystemPort doesn't expose jailed_root, we can't do it easily without changing the port.
+            # But wait, OsFileSystem is a concrete class. 
+            
+            # Better: call a method that we know will fail if path is bad.
+            # We can't really "read" a directory as a file.
+            # Let's just use a dummy walk_files call.
+            list(self.file_system.walk_files(path))
             
             result = subprocess.run(
                 ["pytest", path, "-q", "--tb=short"], 

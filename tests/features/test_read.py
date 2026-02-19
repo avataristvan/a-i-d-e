@@ -7,8 +7,8 @@ from aide.parsing.infrastructure.parsers import RegexLanguageParser
 from aide.features.code_inspection.plugin import CodeInspectionPlugin
 
 @pytest.fixture
-def test_context():
-    fs = OsFileSystem()
+def test_context(temp_dir):
+    fs = OsFileSystem(jailed_root=temp_dir)
     parser = RegexLanguageParser()
     return Context(file_system=fs, language_parser=parser)
 
@@ -42,7 +42,7 @@ def test_handle_read_with_selection(temp_dir, test_context, capsys):
     assert "1: line 1" not in captured.out
     assert "4: line 4" not in captured.out
 
-def test_handle_read_file_not_found(test_context, capsys):
+def test_handle_read_file_not_found(temp_dir, test_context, capsys):
     plugin = CodeInspectionPlugin()
     args = Namespace(file="nonexistent.txt", selection=None)
     

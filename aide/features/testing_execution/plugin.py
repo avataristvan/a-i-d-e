@@ -2,7 +2,7 @@ from argparse import _SubParsersAction
 from aide.core.context import Context
 from aide.features.testing_execution.application.execute_tests import ExecuteTestsUseCase
 from aide.features.testing_execution.application.audit_fixtures import AuditFixturesUseCase
-from aide.features.testing_execution.application.test_audit import TestAuditUseCase
+from aide.features.testing_execution.application.test_audit import AuditCoverageUseCase
 
 class TestExecutionPlugin:
     """Plugin to handle deterministic AI-readable test execution and coverage reports."""
@@ -28,7 +28,7 @@ class TestExecutionPlugin:
         cov_parser.set_defaults(func=lambda args: self.run_test_audit(args, context))
 
     def run_test(self, args, context: Context):
-        use_case = ExecuteTestsUseCase()
+        use_case = ExecuteTestsUseCase(context.file_system)
         use_case.execute(args.path, args.format)
         
     def run_audit_fixtures(self, args, context: Context):
@@ -36,5 +36,5 @@ class TestExecutionPlugin:
         use_case.execute(args.path, args.format)
         
     def run_test_audit(self, args, context: Context):
-        use_case = TestAuditUseCase()
+        use_case = AuditCoverageUseCase(context.file_system)
         use_case.execute(args.src, args.tests, args.format)
