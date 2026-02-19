@@ -52,10 +52,10 @@ class PluginLoader:
                             for attribute_name in dir(module):
                                 attribute = getattr(module, attribute_name)
                                 if isinstance(attribute, type) and attribute_name.endswith("Plugin"):
-                                    # Protocol check at runtime is tricky with simple inspection, duck typing is fine
+                                    import inspect
                                     try:
                                         plugin_instance = attribute()
-                                        if hasattr(plugin_instance, 'register'):
+                                        if hasattr(plugin_instance, 'register') and inspect.ismethod(plugin_instance.register):
                                             plugin_instance.register(subparsers, context)
                                     except Exception as e:
                                         print(f"Failed to register plugin {module_name}: {e}")

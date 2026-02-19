@@ -97,6 +97,55 @@ Refactor: Rename symbol project-wide with regex-safe whole-word matching.
   - `--root`: Project root
 - **Invoke**: `./a-i-d-e/aide.py rename-symbol <old> <new> [--root <p>] [-n]`
 
+## Agentic Code Generation & Testing Tools
+
+### `generate-tests`
+Test Generation: Scaffold context payload for test generation.
+- **Args**: `--file` (path), `--symbol` (name), `--format` (json|markdown)
+- **Invoke**: `./a-i-d-e/aide.py generate-tests --file <path> --symbol <name> [--format json]`
+
+### `scaffold-mocks`
+Test Generation: Scaffold boilerplate mock dependencies for a class constructor.
+- **Args**: `--file` (path), `--class-name` (name), `--format` (json|markdown)
+- **Invoke**: `./a-i-d-e/aide.py scaffold-mocks --file <path> --class-name <name> [--format json]`
+
+### `scaffold-feature`
+Code Generation: Deterministically generate a Clean Architecture folder structure and boilerplate.
+- **Args**: `--name` (FeatureName), `--stack` (kotlin|python), `--output-dir` (default: ./src)
+- **Invoke**: `./a-i-d-e/aide.py scaffold-feature --name <FeatureName> --stack <stack> [--output-dir <dir>]`
+
+### `implement-interface`
+Code Generation: Mechanically inject missing method stubs from an interface into a concrete class.
+- **Args**: `--file` (path), `--class-name` (ConcreteClass), `--implements` (InterfaceName)
+- **Invoke**: `./a-i-d-e/aide.py implement-interface --file <path> --class-name <ConcreteClass> --implements <InterfaceName>`
+
+### `register-dependency`
+Code Generation: Safely inject an import and a DI binding statement into a DI registry file.
+- **Args**: `--file` (path), `--import-path` (full import), `--binding` (exact statement)
+- **Invoke**: `./a-i-d-e/aide.py register-dependency --file <path> --import-path <path> --binding <statement>`
+
+### `project-dto`
+Code Generation: Deterministically generate a DTO and mapping function from a Domain Entity.
+- **Args**: `--source-file` (path), `--entity` (ClassName), `--target-file` (path), `--dto` (DTOName), `--stack` (kotlin|python)
+- **Invoke**: `./a-i-d-e/aide.py project-dto --source-file <path> --entity <Entity> --target-file <path> --dto <DTO> --stack <stack>`
+
+## Agentic Test Execution Tools
+
+### `test`
+Test Execution: Run tests and return a concise JSON/text payload omitting unreadable terminal traces.
+- **Args**: `--path` (dir), `--format` (json|text)
+- **Invoke**: `./a-i-d-e/aide.py test --path <dir> [--format json]`
+
+### `audit-fixtures`
+Test Execution: Scans pytest fixtures and correlates usages to report unused setup code.
+- **Args**: `--path` (dir), `--format` (json|text)
+- **Invoke**: `./a-i-d-e/aide.py audit-fixtures --path <dir> [--format json]`
+
+### `test-audit`
+Test Execution: Runs test suite with coverage and emits structured mapping of exactly which file lines lack tests.
+- **Args**: `--src` (dir), `--tests` (dir), `--format` (json|text)
+- **Invoke**: `./a-i-d-e/aide.py test-audit --src <src> --tests <tests> [--format json]`
+
 ## Flags
 - `-n`, `--dry-run`: Preview all changes (file writes, renames, reference updates) without applying them.
 

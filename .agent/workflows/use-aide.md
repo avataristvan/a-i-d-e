@@ -9,4 +9,3 @@ description: how to use a-i-d-e for code analysis, refactoring, and AI-driven co
 5. **Human Interface**: If a human asks to "show the code" or "show the implementation", use `aide.py read` to provide a line-numbered output to facilitate precise communication.
 6. **Agentic Code Generation**: Use `aide.py scaffold-feature`, `implement-interface`, `register-dependency`, and `project-dto` to deterministically scaffold exact boilerplate architectures without hallucinating structural bounds or imports.
 7. **Test Generation**: Use `aide.py generate-tests` and `scaffold-mocks` to quickly bootstrap exact mocking topologies before writing unit tests.
-8. **Test Execution & Auditing**: Use `aide.py test --format json` instead of raw `pytest` for clean output. Use `audit-fixtures` to detect unused scaffolding, and `test-audit` to pinpoint exact uncovered lines.

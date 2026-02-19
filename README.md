@@ -1,7 +1,7 @@
 # a-i-d-e
 **Agent Interface for Deterministic Editing**
 
-AIDE is a specialized CLI tool designed to empower AI Agents with deterministic code analysis and refactoring capabilities across multiple languages (**Kotlin, TypeScript, JavaScript, Python, C#, Rust, Go, C++, Scala, Ruby**). While it runs in a standard terminal, its primary "users" are automated sub-agents.
+AIDE is a specialized CLI tool designed to empower AI Agents with deterministic code analysis, refactoring, code generation, and test execution capabilities across multiple languages (**Kotlin, TypeScript, JavaScript, Python, C#, Rust, Go, C++, Scala, Ruby**). While it runs in a standard terminal, its primary "users" are automated sub-agents.
 
 ## Navigator's Guide (Setup for Agents)
 
@@ -32,6 +32,18 @@ Once these steps are complete, any AI agent interacting with your repository wil
 - **`change-signature`**: update function signatures and all call sites safely (Multi-language).
 - **`move-symbol`**: move top-level functions/classes to new files (Multi-language).
 
+### Agentic Code & Test Generation
+- **`scaffold-feature`**: deterministically scaffold Clean Architecture domain, application, and infra layers.
+- **`implement-interface`**: mechanically inject missing method stubs from interfaces into concrete classes.
+- **`project-dto`**: automatically generate a DTO and a 1:1 schema mapping function from a Domain Entity.
+- **`register-dependency`**: safely append an import and a DI binding statement cleanly into registry files.
+- **`generate-tests` & `scaffold-mocks`**: build mock topologies and output JSON scaffolding to prepare test environments.
+
+### Agentic Test Execution
+- **`test`**: wrap test execution to return structured JSON payloads to agents, filtering out noisy terminal traces.
+- **`audit-fixtures`**: scan pytest setups and mathematically report unused/redundant fixtures.
+- **`test-audit`**: run internal coverage tools and emit specific line gaps for agent review.
+
 ## Supported Languages
 
 - **Kotlin**: Full refactoring support including `move-package` and `cleanup`.
@@ -42,3 +54,11 @@ Once these steps are complete, any AI agent interacting with your repository wil
 ## Philosophy
 
 AIDE follows a **Safe and Deterministic** philosophy. It avoids common LLM pitfalls by using regex-based parsing and deterministic file operations, ensuring that refactoring results are predictable and parsable for machine consumption.
+
+## Testing
+
+AIDE is fully tested using `pytest`. To run the suite:
+```bash
+pytest tests/ -v
+```
+See `CONTRIBUTING.md` for details on adding new tests.
