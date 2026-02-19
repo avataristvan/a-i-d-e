@@ -53,7 +53,7 @@ Once these steps are complete, any AI agent interacting with your repository wil
 
 ## Philosophy
 
-AIDE follows a **Safe and Deterministic** philosophy. It avoids common LLM pitfalls by using regex-based parsing and deterministic file operations, ensuring that refactoring results are predictable and parsable for machine consumption.
+AIDE follows a **Safe and Deterministic** philosophy. It avoids common LLM pitfalls by employing a hybrid intelligence architecture: a **Composite Language Parser** routes structurally complex languages like Python to native Abstract Syntax Tree (AST) engines (`ast`), while falling back to highly robust Regex parsers for other stacks. This ensures refactoring results are mathematically stable and machine-parsable.
 
 ## Testing
 
