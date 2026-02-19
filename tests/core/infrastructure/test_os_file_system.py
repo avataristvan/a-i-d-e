@@ -1,8 +1,11 @@
 import os
 from aide.core.infrastructure.os_file_system import OsFileSystem
 
+import pytest
+from aide.core.infrastructure.os_file_system import OsFileSystem, SecurityError
+
 def test_write_and_read_file(temp_dir):
-    fs = OsFileSystem()
+    fs = OsFileSystem(jailed_root=temp_dir)
     test_file = os.path.join(temp_dir, "test.txt")
     content = "Hello, AIDE!"
     
@@ -13,7 +16,7 @@ def test_write_and_read_file(temp_dir):
     assert read_content == content
 
 def test_walk_files(temp_dir):
-    fs = OsFileSystem()
+    fs = OsFileSystem(jailed_root=temp_dir)
     os.makedirs(os.path.join(temp_dir, "src"))
     file1 = os.path.join(temp_dir, "src", "file1.txt")
     file2 = os.path.join(temp_dir, "file2.txt")
@@ -31,7 +34,7 @@ def test_walk_files(temp_dir):
     assert ignored_file not in files
 
 def test_move_path(temp_dir):
-    fs = OsFileSystem()
+    fs = OsFileSystem(jailed_root=temp_dir)
     src = os.path.join(temp_dir, "src.txt")
     dst = os.path.join(temp_dir, "dst", "dst.txt")
     
@@ -43,7 +46,7 @@ def test_move_path(temp_dir):
     assert fs.read_file(dst) == "move_me"
 
 def test_delete_path(temp_dir):
-    fs = OsFileSystem()
+    fs = OsFileSystem(jailed_root=temp_dir)
     file_path = os.path.join(temp_dir, "delete.txt")
     dir_path = os.path.join(temp_dir, "delete_dir")
     
@@ -55,3 +58,13 @@ def test_delete_path(temp_dir):
     
     fs.delete_path(dir_path)
     assert not os.path.exists(dir_path)
+
+def test_security_jail_prevents_traversal(temp_dir):
+    fs = OsFileSystem(jailed_root=temp_dir)
+    evil_path = "/etc/passwd"
+    
+    with pytest.raises(SecurityError) as exc_info:
+        fs.read_file(evil_path)
+        
+    assert "Path traversal prevented" in str(exc_info.value)
+    assert evil_path in str(exc_info.value)

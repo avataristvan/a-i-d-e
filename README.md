@@ -55,6 +55,9 @@ Once these steps are complete, any AI agent interacting with your repository wil
 
 AIDE follows a **Safe and Deterministic** philosophy. It avoids common LLM pitfalls by employing a hybrid intelligence architecture: a **Composite Language Parser** routes structurally complex languages like Python to native Abstract Syntax Tree (AST) engines (`ast`), while falling back to highly robust Regex parsers for other stacks. This ensures refactoring results are mathematically stable and machine-parsable.
 
+### Security by Default
+AIDE is designed to run autonomously on behalf of an AI agent. To prevent malicious prompt-injection or repository traversal attacks, all file operations (`read`, `extract`, `move-symbol`, `test`, etc.) are intercepted by a mandatory **Path Boundary Jail** within the core `OsFileSystem`. If an agent attempts to access files outside the current working execution directory (e.g. `/etc/passwd`), AIDE halts execution immediately with a `SecurityError`.
+
 ## Testing
 
 AIDE is fully tested using `pytest`. To run the suite:

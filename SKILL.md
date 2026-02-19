@@ -9,6 +9,8 @@ binary: ./a-i-d-e/aide.py
 CLI tool for deterministic file operations & refactoring.
 Supported Languages: **Kotlin, TypeScript, JavaScript, Python, C#, Rust, Go, C++, Scala, Ruby**.
 
+**Security**: AIDE operates within a strict Path Boundary Jail. All operations are confined to the execution directory. Path traversal attempts (e.g. `../` or `/etc/`) will throw a `SecurityError`.
+
 ## Commands
 
 ### `outline`
