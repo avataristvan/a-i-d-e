@@ -3,6 +3,25 @@ from typing import List
 from aide.parsing.domain.ports import LanguageParserPort
 from aide.parsing.domain.models import SymbolNode
 
+class CompositeLanguageParser(LanguageParserPort):
+    """Routes parsing requests to specialized AST parsers based on file extension, 
+    falling back to RegexLanguageParser if no specific grammar engine exists yet."""
+    
+    def __init__(self, fallback_parser: LanguageParserPort):
+        self._parsers = {}
+        self._fallback = fallback_parser
+        
+    def register(self, extension: str, parser: LanguageParserPort):
+        self._parsers[extension] = parser
+        
+    def parse(self, content: str, file_extension: str) -> List[SymbolNode]:
+        parser = self._parsers.get(file_extension, self._fallback)
+        return parser.parse(content, file_extension)
+
+    def parse_imports(self, content: str, file_extension: str) -> List[str]:
+        parser = self._parsers.get(file_extension, self._fallback)
+        return parser.parse_imports(content, file_extension)
+
 class RegexLanguageParser(LanguageParserPort):
     def parse(self, content: str, file_extension: str) -> List[SymbolNode]:
         lines = content.splitlines()

@@ -8,7 +8,8 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from aide.core.context import Context
 from aide.core.infrastructure.os_file_system import OsFileSystem
-from aide.parsing.infrastructure.parsers import RegexLanguageParser
+from aide.parsing.infrastructure.parsers import RegexLanguageParser, CompositeLanguageParser
+from aide.parsing.infrastructure.ast_parsers import AstPythonParser
 from aide.plugin_system.infrastructure.plugin_loader import PluginLoader
 
 def main():
@@ -17,8 +18,13 @@ def main():
 
     # 1. Initialize Core Infrastructure
     file_system = OsFileSystem()
-    language_parser = RegexLanguageParser()
-    context = Context(file_system=file_system, language_parser=language_parser)
+    
+    # Setup Language Parsers
+    fallback_parser = RegexLanguageParser()
+    composite_parser = CompositeLanguageParser(fallback_parser)
+    composite_parser.register(".py", AstPythonParser())
+    
+    context = Context(file_system=file_system, language_parser=composite_parser)
 
     # 2. Load Plugins (from features directory)
     # We now point to the new 'features' directory for capabilities
