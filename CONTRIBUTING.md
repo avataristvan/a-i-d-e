@@ -2,6 +2,21 @@
 
 Thank you for your interest in contributing to **AIDE (Agent Interface for Deterministic Editing)**!
 
+## Architecture Guidelines
+
+AIDE is separated into a core execution environment and a modular plugin framework:
+1. **`aide/core`**: Contains the state management `Context`, and agnostic infrastructure like `OsFileSystem`. 
+2. **`aide/parsing`**: Defines the extraction algorithms, such as `RegexLanguageParser`.
+3. **`aide/features`**: This is where all the functionality lives! Features are plugins added dynamically.
+
+### Adding a New Command
+
+To add a new refactoring, code generation, or testing utility command:
+1. **Create the Use Case**: Inside an appropriately named domain under `aide/features/` (e.g., `aide/features/my_cool_feature/application/my_use_case.py`), implement a Use Case class that exposes an `execute(self, ...)` method.
+2. **Interact with the Context**: Ensure you pass the `Context` (or specific `file_system` / `language_parser` components) into your Use Case constructor so it executes deterministically and can be unit tested without hitting a real disk.
+3. **Draft the Plugin Registry**: In the domain's `plugin.py` file, bind your new Use Case to an `argparse` SubParser. 
+4. **Update Docs**: Add your new command to `SKILL.md` so that AI agents inherently discover it.
+
 ## Testing
 
 AIDE relies heavily on deterministic operations and regex parsing. Because we modify source code, having a robust test suite is critical.
