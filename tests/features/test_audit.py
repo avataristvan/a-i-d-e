@@ -41,6 +41,10 @@ def test_audit_kotlin(temp_dir):
     sys.stdout = sys.__stdout__
     output = captured_output.getvalue()
     
-    assert "Found 1 Violations:" in output
-    assert "Domain cannot import Infrastructure" in output
+    import json
+    data = json.loads(output)
+    
+    assert data["success"] is False
+    assert len(data["data"]["violations"]) == 1
+    assert "Domain cannot import Infrastructure" in data["data"]["violations"][0]
     assert "Good.kt" not in output

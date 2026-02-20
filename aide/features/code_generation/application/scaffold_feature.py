@@ -13,13 +13,12 @@ class ScaffoldFeatureUseCase:
         # We need to simulate directory creation or just ensure OsFileSystem handles paths
         # OsFileSystem's write_file should create parent dirs, but let's be explicit
         
-        if stack.lower() == "kotlin":
+        if stack.lower() == "kotlin" or stack.lower() == "java":
             self._scaffold_kotlin(base_path, feature_slug, feature_class)
         elif stack.lower() == "python":
             self._scaffold_python(base_path, feature_slug, feature_class)
         else:
-            print(f"Unsupported stack: {stack}.")
-            return False
+            self._scaffold_generic(base_path, feature_slug, feature_class, stack.lower())
             
         return True
 
@@ -47,3 +46,22 @@ class ScaffoldFeatureUseCase:
         
         infra_repo = f"from {slug}.domain.entity import {clazz}Entity\n\nclass {clazz}RepositoryImpl:\n    def save(self, entity: {clazz}Entity):\n        pass\n"
         self.file_system.write_file(os.path.join(base_path, "infrastructure", "repository.py"), infra_repo)
+
+    def _scaffold_generic(self, base_path: str, slug: str, clazz: str, stack: str):
+        # Generic fallback for unsupported stacks
+        ext = ".ts" if stack in ["typescript", "javascript", "ts", "js"] else (".go" if stack == "go" else ".txt")
+        if stack == "rust" or stack == "rs": ext = ".rs"
+        elif stack == "csharp" or stack == "cs": ext = ".cs"
+        elif stack == "cpp" or stack == "c++": ext = ".cpp"
+        elif stack == "scala": ext = ".scala"
+        elif stack == "ruby" or stack == "rb": ext = ".rb"
+        
+        domain_entity = f"// Entity: {clazz}\n// ID: string\n"
+        self.file_system.write_file(os.path.join(base_path, "domain", f"{clazz}Entity{ext}"), domain_entity)
+        
+        app_use_case = f"// UseCase: Get{clazz}\n// Returns: {clazz}Entity\n"
+        self.file_system.write_file(os.path.join(base_path, "application", f"Get{clazz}UseCase{ext}"), app_use_case)
+        
+        infra_repo = f"// Repository: {clazz}RepositoryImpl\n// Methods: save({clazz}Entity)\n"
+        self.file_system.write_file(os.path.join(base_path, "infrastructure", f"{clazz}RepositoryImpl{ext}"), infra_repo)
+

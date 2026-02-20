@@ -12,7 +12,6 @@ class ExtractInterfaceUseCase:
         try:
             file_path = os.path.abspath(file_path)
             if not os.path.exists(file_path):
-                print(f"❌ File not found: {file_path}")
                 return False
 
             if not interface_name:
@@ -25,7 +24,6 @@ class ExtractInterfaceUseCase:
             # 1. Find Class and extract public members
             start, end = strategy.find_symbol_range(lines, class_name)
             if not start:
-                print(f"❌ Class '{class_name}' not found in {file_path}")
                 return False
 
             class_lines = lines[start-1:end]
@@ -50,7 +48,7 @@ class ExtractInterfaceUseCase:
                         members.append(member)
 
             if not members:
-                print(f"⚠️ No public non-override members found in class {class_name}")
+                pass # Still create empty interface
 
             # 2. Create Interface Content
             package_header = strategy.get_package_header(file_path)
@@ -87,19 +85,11 @@ class ExtractInterfaceUseCase:
             # 4. Write Files
             interface_file = os.path.join(os.path.dirname(file_path), f"{interface_name}.kt")
             
-            if dry_run:
-                print(f"🔍 [Dry Run] Would create {interface_file}")
-                print(f"🔍 [Dry Run] Would modify {file_path}")
-            else:
+            if not dry_run:
                 self.file_system.write_file(interface_file, interface_content)
                 self.file_system.write_file(file_path, new_original_content)
-                print(f"✅ Extracted interface {interface_name} to {interface_file}")
-                print(f"✅ Updated {class_name} to implement {interface_name}")
 
             return True
 
         except Exception as e:
-            print(f"❌ Interface extraction failed: {e}")
-            import traceback
-            traceback.print_exc()
             return False

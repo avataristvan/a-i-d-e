@@ -47,7 +47,6 @@ class ScaffoldMocksUseCase:
                 return json.dumps(context_data)
                 
         except Exception as e:
-            print(f"❌ Failed to scaffold mocks: {e}")
             return None
 
     def _extract_dependencies(self, class_code: str, class_name: str, file_path: str) -> Dict[str, str]:

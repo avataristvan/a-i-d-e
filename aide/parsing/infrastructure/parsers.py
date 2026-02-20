@@ -64,6 +64,46 @@ class RegexLanguageParser(LanguageParserPort):
                 (r'^\s*(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s+)?(?:<|\()', 'arrow_function'), 
             ]
             
+        elif file_extension in {'.cs'}:
+            patterns = [
+                (r'^\s*(?:public\s+|private\s+|protected\s+|internal\s+|static\s+|sealed\s+|abstract\s+|partial\s+)*class\s+(\w+)', 'class'),
+                (r'^\s*(?:public\s+|private\s+|protected\s+|internal\s+|static\s+|sealed\s+|abstract\s+|partial\s+)*interface\s+(\w+)', 'interface'),
+                (r'^\s*(?:public\s+|private\s+|protected\s+|internal\s+|static\s+|sealed\s+|abstract\s+|partial\s+)*enum\s+(\w+)', 'enum'),
+                (r'^\s*(?:public\s+|private\s+|protected\s+|internal\s+|static\s+|virtual\s+|override\s+|sealed\s+|abstract\s+|async\s+)*[\w<>, \[\]]+\s+(\w+)\s*\(', 'function'),
+            ]
+        elif file_extension in {'.rs'}:
+            patterns = [
+                (r'^\s*(?:pub\s+(?:\([^)]+\)\s+)?)?struct\s+(\w+)', 'struct'),
+                (r'^\s*(?:pub\s+(?:\([^)]+\)\s+)?)?enum\s+(\w+)', 'enum'),
+                (r'^\s*(?:pub\s+(?:\([^)]+\)\s+)?)?trait\s+(\w+)', 'trait'),
+                (r'^\s*(?:pub\s+(?:\([^)]+\)\s+)?)?(?:async\s+|const\s+|unsafe\s+|extern\s+)*fn\s+(\w+)', 'function'),
+                (r'^\s*(?:pub\s+(?:\([^)]+\)\s+)?)?mod\s+(\w+)', 'module'),
+            ]
+        elif file_extension in {'.go'}:
+            patterns = [
+                (r'^\s*type\s+(\w+)\s+struct', 'struct'),
+                (r'^\s*type\s+(\w+)\s+interface', 'interface'),
+                (r'^\s*func\s+(?:\([^)]+\)\s+)?(\w+)', 'function'),
+            ]
+        elif file_extension in {'.cpp', '.hpp', '.c', '.cc', '.h'}:
+             patterns = [
+                (r'^\s*(?:class|struct)\s+(\w+)', 'class'),
+                (r'^\s*(?:virtual\s+|inline\s+|constexpr\s+|static\s+)*[a-zA-Z0-9_<>:*\s]+\s+(\w+)\s*\(', 'function'),   
+             ]
+        elif file_extension in {'.scala'}:
+             patterns = [
+                (r'^\s*(?:private\s+|protected\s+|abstract\s+|sealed\s+|final\s+|implicit\s+|lazy\s+|override\s+)*class\s+(\w+)', 'class'),
+                (r'^\s*(?:private\s+|protected\s+|abstract\s+|sealed\s+|final\s+|implicit\s+|lazy\s+|override\s+)*trait\s+(\w+)', 'trait'),
+                (r'^\s*(?:private\s+|protected\s+|abstract\s+|sealed\s+|final\s+|implicit\s+|lazy\s+|override\s+)*object\s+(\w+)', 'object'),
+                (r'^\s*(?:private\s+|protected\s+|abstract\s+|sealed\s+|final\s+|implicit\s+|lazy\s+|override\s+)*def\s+(\w+)', 'function'),
+             ]
+        elif file_extension in {'.rb'}:
+             patterns = [
+                (r'^\s*module\s+(\w+)', 'module'),
+                (r'^\s*class\s+(\w+)', 'class'),
+                (r'^\s*def\s+(?:self\.)?(\w+)', 'function'),
+             ]
+            
         if not patterns:
             return []
 
@@ -104,12 +144,24 @@ class RegexLanguageParser(LanguageParserPort):
             # import ... from '...'
             # import '...'
             pattern = r'^\s*import\s+(?:.*from\s+)?[\'"]([^\'"]+)[\'"]'
+        elif file_extension in {'.cs'}:
+            pattern = r'^\s*using\s+([\w\.]+);'
+        elif file_extension in {'.rs'}:
+            pattern = r'^\s*use\s+([^;]+);'
+        elif file_extension in {'.go'}:
+            pattern = r'^\s*(?:import\s+)?[\'"]([^\'"]+)[\'"]' # very naive go import
+        elif file_extension in {'.cpp', '.hpp', '.c', '.cc', '.h'}:
+            pattern = r'^\s*#include\s*[<"]([^>"]+)[>"]'
+        elif file_extension in {'.scala'}:
+            pattern = r'^\s*import\s+([\w\.]+)'
+        elif file_extension in {'.rb'}:
+            pattern = r'^\s*(?:require|require_relative|load)\s+[\'"]([^\'"]+)[\'"]'
 
-        if not pattern and file_extension not in {'.py'}:
+        if not pattern and file_extension not in {'.py', '.go'}:
              return []
 
         for line in lines:
-            if file_extension in {'.kt', '.java', '.ts', '.tsx', '.js', '.jsx'}:
+            if file_extension in {'.kt', '.java', '.ts', '.tsx', '.js', '.jsx', '.cs', '.rs', '.cpp', '.hpp', '.c', '.cc', '.h', '.scala', '.rb'}:
                 match = re.search(pattern, line)
                 if match:
                     imports.append(match.group(1))
@@ -122,5 +174,11 @@ class RegexLanguageParser(LanguageParserPort):
                  elif line.startswith("from "):
                      parts = line.split(" ")
                      if len(parts) > 1: imports.append(parts[1])
+            elif file_extension == '.go':
+                 # Very naive go logic to handle multi-line imports
+                 line = line.strip()
+                 match = re.search(pattern, line)
+                 if match:
+                     imports.append(match.group(1))
                      
         return imports

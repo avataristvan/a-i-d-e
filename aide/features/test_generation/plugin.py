@@ -1,3 +1,4 @@
+import json
 from argparse import _SubParsersAction
 from aide.core.context import Context
 from aide.features.test_generation.application.generate_tests import GenerateTestsUseCase
@@ -18,8 +19,6 @@ class TestGenerationPlugin:
         mock_parser.set_defaults(func=lambda args: self.run_scaffold(args, context))
 
     def run_generate(self, args, context: Context):
-        print(f"🤖 Generating API payload for test context generation: {args.symbol} in {args.file}...")
-        
         use_case = GenerateTestsUseCase(
             context.file_system,
             context.language_parser,
@@ -28,17 +27,19 @@ class TestGenerationPlugin:
         
         output = use_case.execute(args.file, args.symbol, args.format)
         
-        if output:
-            print("✅ Evaluation context acquired successfully. Payload:")
-            print("-" * 40)
-            print(output)
-            print("-" * 40)
-        else:
-            print(f"❌ Symbol '{args.symbol}' was not found in '{args.file}'.")
+        result = {
+            "success": bool(output),
+            "message": "Evaluation context acquired successfully." if output else f"Symbol '{args.symbol}' was not found in '{args.file}'.",
+            "data": {
+                "file": args.file,
+                "symbol": args.symbol,
+                "format": args.format,
+                "output": output
+            }
+        }
+        print(json.dumps(result, indent=2))
 
     def run_scaffold(self, args, context: Context):
-        print(f"🤖 Generating mock scaffolds for class: {args.class_name} in {args.file}...")
-        
         use_case = ScaffoldMocksUseCase(
             context.file_system,
             context.language_parser,
@@ -47,10 +48,14 @@ class TestGenerationPlugin:
         
         output = use_case.execute(args.file, args.class_name, args.format)
         
-        if output:
-            print("✅ Mock scaffolding successful. Payload:")
-            print("-" * 40)
-            print(output)
-            print("-" * 40)
-        else:
-            print(f"❌ Class '{args.class_name}' was not found in '{args.file}'.")
+        result = {
+            "success": bool(output),
+            "message": "Mock scaffolding successful." if output else f"Class '{args.class_name}' was not found in '{args.file}'.",
+            "data": {
+                "file": args.file,
+                "class_name": args.class_name,
+                "format": args.format,
+                "output": output
+            }
+        }
+        print(json.dumps(result, indent=2))

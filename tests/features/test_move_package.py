@@ -25,7 +25,7 @@ def test_handle_move_package(temp_dir, capsys):
         src="app/src/main/java/com/old",
         dest_package="com.new",
         root=temp_dir,
-        java_root="app/src/main/java",
+        src_root="app/src/main/java",
         dry_run=False
     )
     

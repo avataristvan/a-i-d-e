@@ -9,15 +9,13 @@ class AuditNextjsUseCase:
         self.file_system = file_system
         self.language_parser = language_parser
 
-    def execute(self, src_path: str) -> None:
-        print(f"🔍 Auditing Next.js/React Architecture in {src_path}...")
+    def execute(self, src_path: str) -> dict:
         violations = []
         
         try:
             files = list(self.file_system.walk_files(src_path))
         except Exception as e:
-            print(f"❌ Failed to traverse path: {e}")
-            return
+            return {"success": False, "error": f"Failed to traverse path: {e}"}
 
         for full_path in files:
             if not full_path.endswith(".ts") and not full_path.endswith(".tsx"):
@@ -76,11 +74,15 @@ class AuditNextjsUseCase:
                             violations.append(f"{filename} : Critical Path: Engines/Controllers should NOT import React (imports '{imp}')")
 
             except Exception as e:
-                print(f"Error reading {full_path}: {e}")
+                violations.append(f"{rel_path}: Error reading file: {e}")
 
-        if violations:
-            print(f"❌ Found {len(violations)} Violations:")
-            for v in violations:
-                 print(f"  - {v}")
-        else:
-            print("✅ Next.js/Okkularion Architecture is Clean!")
+        success = len(violations) == 0
+        message = "Next.js/Okkularion Architecture is Clean!" if success else f"Found {len(violations)} Violations"
+        
+        return {
+            "success": success,
+            "message": message,
+            "data": {
+                "violations": violations
+            }
+        }

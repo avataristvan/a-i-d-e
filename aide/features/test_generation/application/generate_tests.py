@@ -50,7 +50,6 @@ class GenerateTestsUseCase:
                 return json.dumps(context_data)
                 
         except Exception as e:
-            print(f"❌ Failed to extract test context: {e}")
             return None
 
     def _format_markdown(self, data: Dict[str, Any]) -> str:

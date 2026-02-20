@@ -1,3 +1,4 @@
+import json
 from argparse import _SubParsersAction
 import os
 from aide.core.context import Context
@@ -5,11 +6,11 @@ from aide.features.code_refactoring.application.smart_rename import SmartRenameU
 
 class RefactorPlugin:
     def register(self, subparsers: _SubParsersAction, context: Context) -> None:
-        parser = subparsers.add_parser("move-package", help="Move a package and update references")
-        parser.add_argument("src", help="Source package path relative to java-root (e.g. domain/macro)")
-        parser.add_argument("dest_package", help="Destination package (e.g. com.istvan.ExoDeck.features.macro.domain)")
+        parser = subparsers.add_parser("move-package", help="Move a package/module and update references")
+        parser.add_argument("src", help="Source package path relative to src-root (e.g. domain/macro)")
+        parser.add_argument("dest_package", help="Destination package/module logic path (e.g. com.istvan.ExoDeck.features.macro.domain or my_app.features.macro)")
         parser.add_argument("--root", default=".", help="Project root")
-        parser.add_argument("--java-root", default="app/src/main/java/com/istvan/ExoDeck", help="Java source root")
+        parser.add_argument("--src-root", default="app/src/main/java", help="Source root directory containing the packages")
         parser.add_argument("--dry-run", "-n", action="store_true", help="Preview changes without writing to files")
         parser.set_defaults(func=lambda args: self.handle_move_package(args, context))
 
@@ -59,112 +60,141 @@ class RefactorPlugin:
     def handle_extract_interface(self, args, context: Context):
         from aide.features.code_refactoring.application.extract_interface import ExtractInterfaceUseCase
         
-        print(f"🧬 Extracting interface from '{args.class_name}' in {args.file}...")
         use_case = ExtractInterfaceUseCase(context.file_system, context.language_parser, context.strategy_provider)
         success = use_case.execute(args.file, args.class_name, args.interface_name, dry_run=args.dry_run)
         
-        if success:
-            print(f"✅ Interface extraction complete.")
-        else:
-            print(f"❌ Interface extraction failed.")
+        result = {
+            "success": success,
+            "message": "Interface extraction complete." if success else "Interface extraction failed.",
+            "data": {
+                "file": args.file,
+                "class_name": args.class_name,
+                "interface_name": args.interface_name,
+                "dry_run": args.dry_run
+            }
+        }
+        print(json.dumps(result, indent=2))
 
     def handle_rename_symbol(self, args, context: Context):
         from aide.features.code_refactoring.application.smart_rename import SmartRenameUseCase
         
         use_case = SmartRenameUseCase(context.file_system)
-        result = use_case.execute(args.root, args.old_symbol, args.new_symbol, use_word_boundary=True, dry_run=args.dry_run)
+        res = use_case.execute(args.root, args.old_symbol, args.new_symbol, use_word_boundary=True, dry_run=args.dry_run)
         
-        if result.success:
-            status = "Preview (No changes made)" if args.dry_run else "Success"
-            print(f"✅ Rename complete [{status}]. Files changed: {result.files_changed}, Total replacements: {result.total_replacements}")
-        else:
-            print(f"❌ Rename failed: {result.message}")
+        result = {
+            "success": res.success,
+            "message": "Preview (No changes made)" if args.dry_run and res.success else "Success" if res.success else res.message,
+            "data": {
+                "files_changed": res.files_changed,
+                "total_replacements": res.total_replacements,
+                "old_symbol": args.old_symbol,
+                "new_symbol": args.new_symbol
+            }
+        }
+        print(json.dumps(result, indent=2))
 
     def handle_move_package(self, args, context: Context):
         src_path = os.path.abspath(os.path.join(args.root, args.src))
-        java_root = os.path.abspath(os.path.join(args.root, args.java_root))
+        src_root = os.path.abspath(os.path.join(args.root, args.src_root))
         
         if not os.path.exists(src_path):
-            print(f"❌ Source path does not exist: {src_path}")
+            print(json.dumps({"success": False, "error": f"Source path does not exist: {src_path}"}))
             return
 
-        # Infer old package name
-        rel_path = os.path.relpath(src_path, java_root)
+        # Infer old package/module name
+        rel_path = os.path.relpath(src_path, src_root)
         if rel_path.startswith(".."):
-            print(f"❌ Source path must be inside java-root: {java_root}")
+            print(json.dumps({"success": False, "error": f"Source path must be inside src-root: {src_root}"}))
             return
             
         old_package = rel_path.replace(os.sep, ".")
         new_package = args.dest_package
         
-        print(f"📦 Moving package: {old_package} -> {new_package}")
-        
-        # Calculate destination path
+        # Calculate destination path (assume standard dot-to-slash mapping)
         dest_rel_path = new_package.replace(".", os.sep)
-        dest_path = os.path.join(java_root, dest_rel_path)
+        dest_path = os.path.join(src_root, dest_rel_path)
         
         # Move files
+        moved_success = True
         try:
-            if args.dry_run:
-                print(f"   [Dry Run] Would move files from {src_path} to {dest_path}")
-            else:
-                print(f"   Moving files from {src_path} to {dest_path}...")
+            if not args.dry_run:
                 context.file_system.move_path(src_path, dest_path)
         except Exception as e:
-             print(f"❌ Failed to move files: {e}")
+             print(json.dumps({"success": False, "error": f"Failed to move files: {e}"}))
              return
 
         # Smart Rename package refs
-        print(f"🔄 Updating references ({old_package} -> {new_package}){' [Dry Run]' if args.dry_run else ''}...")
         use_case = SmartRenameUseCase(context.file_system)
-        result = use_case.execute(args.root, old_package, new_package, dry_run=args.dry_run)
+        res = use_case.execute(args.root, old_package, new_package, dry_run=args.dry_run)
         
-        if result.success:
-            print(f"✅ Move complete.")
-            print(f"   Files updated: {result.files_changed}")
-            print(f"   Replacements: {result.total_replacements}")
-        else:
-            print(f"⚠️ Move succeeded but reference update failed: {result.message}")
+        result = {
+            "success": res.success,
+            "message": "Move complete." if res.success else f"Move succeeded but reference update failed: {res.message}",
+            "data": {
+                "old_package": old_package,
+                "new_package": new_package,
+                "files_updated": res.files_changed,
+                "replacements": res.total_replacements,
+                "dry_run": args.dry_run
+            }
+        }
+        print(json.dumps(result, indent=2))
 
     def handle_extract(self, args, context: Context):
         from aide.features.code_refactoring.application.extract_function import ExtractFunctionUseCase
         
         file_path = os.path.abspath(args.file)
         if not os.path.exists(file_path):
-            print(f"❌ File not found: {file_path}")
+            print(json.dumps({"success": False, "error": f"File not found: {file_path}"}))
             return
-
-        print(f"✂️  Extracting to '{args.name}' from {args.file} ({args.selection})...")
         
         use_case = ExtractFunctionUseCase(context.file_system, context.strategy_provider)
         success = use_case.execute(file_path, args.selection, args.name, args.scope, dry_run=args.dry_run)
         
-        if success:
-            print(f"✅ Extraction complete.")
-        else:
-            print(f"❌ Extraction failed.")
+        result = {
+            "success": success,
+            "message": "Extraction complete." if success else "Extraction failed.",
+            "data": {
+                "file": args.file,
+                "selection": args.selection,
+                "name": args.name,
+                "dry_run": args.dry_run
+            }
+        }
+        print(json.dumps(result, indent=2))
 
     def handle_change_signature(self, args, context: Context):
         from aide.features.code_refactoring.application.change_signature import ChangeSignatureUseCase
         
-        print(f"🔄 Changing signature for '{args.symbol}'...")
         use_case = ChangeSignatureUseCase(context.file_system, context.language_parser, context.strategy_provider)
         success = use_case.execute(args.root, args.symbol, args.add_param, args.default_value, dry_run=args.dry_run)
         
-        if success:
-            print(f"✅ Signature update complete.")
-        else:
-            print(f"❌ Signature update failed.")
+        result = {
+            "success": success,
+            "message": "Signature update complete." if success else "Signature update failed.",
+            "data": {
+                "symbol": args.symbol,
+                "add_param": args.add_param,
+                "default_value": args.default_value,
+                "dry_run": args.dry_run
+            }
+        }
+        print(json.dumps(result, indent=2))
 
     def handle_move_symbol(self, args, context: Context):
         from aide.features.code_refactoring.application.move_symbol import MoveSymbolUseCase
         
-        print(f"🚚 Moving symbol '{args.symbol}' to {args.dest}...")
         use_case = MoveSymbolUseCase(context.file_system, context.language_parser, context.strategy_provider)
         success = use_case.execute(args.source, args.symbol, args.dest, dry_run=args.dry_run, root_path=args.root)
         
-        if success:
-            status = "Preview (No changes made)" if args.dry_run else ""
-            print(f"✅ Move complete. {status}")
-        else:
-            print(f"❌ Move failed.")
+        result = {
+            "success": success,
+            "message": "Move complete." if success else "Move failed.",
+            "data": {
+                "symbol": args.symbol,
+                "source": args.source,
+                "dest": args.dest,
+                "dry_run": args.dry_run
+            }
+        }
+        print(json.dumps(result, indent=2))

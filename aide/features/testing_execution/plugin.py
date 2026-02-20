@@ -1,3 +1,4 @@
+import json
 from argparse import _SubParsersAction
 from aide.core.context import Context
 from aide.features.testing_execution.application.execute_tests import ExecuteTestsUseCase
@@ -29,12 +30,15 @@ class TestExecutionPlugin:
 
     def run_test(self, args, context: Context):
         use_case = ExecuteTestsUseCase(context.file_system)
-        use_case.execute(args.path, args.format)
+        result = use_case.execute(args.path, args.format)
+        print(json.dumps(result, indent=2))
         
     def run_audit_fixtures(self, args, context: Context):
         use_case = AuditFixturesUseCase(context.file_system)
-        use_case.execute(args.path, args.format)
+        result = use_case.execute(args.path, args.format)
+        print(json.dumps(result, indent=2))
         
     def run_test_audit(self, args, context: Context):
         use_case = AuditCoverageUseCase(context.file_system)
-        use_case.execute(args.src, args.tests, args.format)
+        result = use_case.execute(args.src, args.tests, args.format)
+        print(json.dumps(result, indent=2))

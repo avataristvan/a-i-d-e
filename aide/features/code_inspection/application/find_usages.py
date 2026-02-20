@@ -51,5 +51,4 @@ class FindUsagesUseCase:
             return usages
 
         except Exception as e:
-            print(f"❌ Find usages failed: {e}")
             return []

@@ -22,7 +22,6 @@ class AuditFixturesUseCase:
         try:
             files = list(self.file_system.walk_files(tests_dir))
         except Exception as e:
-            print(f"❌ Failed to traverse path: {e}")
             return {}
 
         for path in files:
@@ -59,13 +58,4 @@ class AuditFixturesUseCase:
             "total_fixtures": len(fixtures),
             "unused_fixtures": unused
         }
-        
-        import json
-        if format == "json":
-            print(json.dumps(payload, indent=2))
-        else:
-            print(f"📊 Audited {len(fixtures)} fixtures.")
-            for fix in unused:
-                print(f"⚠️ Unused fixture '{fix['name']}' in {fix['locations']}")
-                
         return payload

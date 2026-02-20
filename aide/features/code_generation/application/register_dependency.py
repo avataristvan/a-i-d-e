@@ -63,10 +63,7 @@ class RegisterDependencyUseCase:
 
             new_content = "\n".join(lines) + "\n"
             self.file_system.write_file(file_path, new_content)
-            
-            print(f"✅ Registered dependency '{binding}'.")
             return True
 
         except Exception as e:
-            print(f"❌ Failed to register dependency: {e}")
             return False

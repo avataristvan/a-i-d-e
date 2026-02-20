@@ -14,7 +14,6 @@ class MoveSymbolUseCase:
             dest_path = os.path.abspath(dest_file)
             
             if not os.path.exists(source_path):
-                print(f"❌ Source file not found: {source_file}")
                 return False
 
             # Batch processing
@@ -48,7 +47,6 @@ class MoveSymbolUseCase:
                     dest_content = f"{dest_header}\n\n"
                 if not dry_run:
                     os.makedirs(os.path.dirname(dest_path), exist_ok=True)
-                print(f"📄 Target: {dest_file}")
 
             # 2. Find and Extract Symbols
             ranges = []
@@ -56,8 +54,6 @@ class MoveSymbolUseCase:
                 start, end = strategy.find_symbol_range(lines, symbol)
                 if start:
                     ranges.append((start, end, symbol))
-                else:
-                    print(f"⚠️ Symbol '{symbol}' not found in source.")
 
             # Sort ranges by start line descending for safe deletion
             ranges.sort(key=lambda x: x[0], reverse=True)
@@ -141,7 +137,6 @@ class MoveSymbolUseCase:
             dest_pkg_name = strategy.get_module_path(dest_path)
             
             if source_pkg_name != dest_pkg_name:
-                print(f"🔄 Updating project-wide references ({source_pkg_name} -> {dest_pkg_name})...")
                 for symbol in symbols_actually_moved:
                     old_import = strategy.get_import_statement(source_pkg_name, symbol)
                     new_import = strategy.get_import_statement(dest_pkg_name, symbol)
@@ -152,17 +147,11 @@ class MoveSymbolUseCase:
                 if not dry_run:
                     self.file_system.write_file(dest_path, dest_content.strip() + "\n")
                     self.file_system.write_file(source_path, "\n".join(lines).strip() + "\n")
-                    print(f"✅ Moved {len(symbols_actually_moved)} symbols to {dest_file}")
-                else:
-                    print(f"🔍 [Dry Run] Would move {len(symbols_actually_moved)} symbols to {dest_file}")
                 return True
             
             return False
 
         except Exception as e:
-            print(f"❌ Move failed: {e}")
-            import traceback
-            traceback.print_exc()
             return False
 
     def _update_references(self, old_text: str, new_text: str, dry_run: bool, root: str = "."):
@@ -175,10 +164,8 @@ class MoveSymbolUseCase:
                     if new_text in content:
                         # If the new import already exists, just remove the old one (to avoid duplicates)
                         # We need to be careful with line breaks.
-                        print(f"   Removing redundant {old_text} from {os.path.relpath(file_path)}")
                         new_content = content.replace(old_text + "\n", "").replace(old_text, "")
                     else:
-                        print(f"   Updating {os.path.relpath(file_path)}")
                         new_content = content.replace(old_text, new_text)
                     
                     if not dry_run:

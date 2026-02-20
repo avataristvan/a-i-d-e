@@ -1,3 +1,4 @@
+import json
 from argparse import _SubParsersAction
 import re
 from aide.core.context import Context
@@ -10,22 +11,46 @@ class CleanupPlugin:
         parser.set_defaults(func=lambda args: self.run(args, context))
 
     def run(self, args, context: Context):
-        print(f"🧹 Running cleanup on {args.path}...")
-        self.remove_unused_imports(args.path, context)
-        self.remove_duplicate_imports(args.path, context)
-        print("✅ Cleanup Complete.")
+        unused_result = self.remove_unused_imports(args.path, context)
+        duplicate_result = self.remove_duplicate_imports(args.path, context)
+        
+        result = {
+            "success": True,
+            "message": "Cleanup Complete.",
+            "data": {
+                "unused_imports_removed": unused_result,
+                "duplicate_imports_removed": duplicate_result
+            }
+        }
+        
+        print(json.dumps(result, indent=2))
 
-    def remove_unused_imports(self, root_path: str, context: Context):
-        print("   - Scanning for unused imports...")
+    def remove_unused_imports(self, root_path: str, context: Context) -> dict:
         files_cleaned = 0
         total_removed = 0
+        details = []
         
         for file_path in context.file_system.walk_files(root_path):
-            if not file_path.endswith(".kt"):
+            if file_path.endswith((".txt", ".md", ".json", ".ini", ".toml")):
                 continue
                 
             content = context.file_system.read_file(file_path)
             lines = content.split('\n')
+            
+            # Fetch the strategy for the current language
+            strategy = context.strategy_provider.get_strategy(file_path)
+            
+            # extract_imports_and_header returns the full lines
+            # This is tricky because we need to know WHICH line it was to remove it.
+            # And we have to extract the symbol to check if it's used.
+            # Let's fallback to the LanguageParser to get the exact imports, or just regex it.
+            # The original logic used regex. Let's adapt it slightly.
+            
+            # Given that extract_unused_imports is hard to generalize perfectly without AST,
+            # we will rely on a language-agnostic heuristic:
+            # 1. Look for 'import ' or 'from ' or 'use '
+            # 2. Extract the last word as the symbol
+            # 3. Check if that word exists elsewhere in the file.
             
             original_content = content
             imports_to_remove = []
@@ -33,13 +58,13 @@ class CleanupPlugin:
             # Pass 1: Identify imports
             for i, line in enumerate(lines):
                 stripped = line.strip()
-                if stripped.startswith("import ") and not stripped.startswith("import //"):
-                    parts = stripped.split()
+                if stripped.startswith(("import ", "from ", "use ")) and not stripped.startswith(("import //", "use //")):
+                    parts = stripped.replace(';', '').split()
                     if len(parts) >= 2:
-                        path = parts[1]
+                        path = parts[1] if not stripped.startswith("from ") else parts[3] if len(parts) > 3 else parts[-1]
                         if path.endswith("*"): continue
                         
-                        symbol = path.split('.')[-1]
+                        symbol = path.split('.')[-1].split('::')[-1].split('/')[-1]
                         if " as " in stripped: symbol = parts[-1]
                             
                         is_used = False
@@ -60,18 +85,21 @@ class CleanupPlugin:
                 context.file_system.write_file(file_path, new_content)
                 files_cleaned += 1
                 total_removed += len(imports_to_remove)
-                print(f"     - Cleaned {len(imports_to_remove)} imports in {file_path}")
+                details.append({"file": file_path, "removed_count": len(imports_to_remove)})
 
-        print(f"   Files cleaned: {files_cleaned}")
-        print(f"   Unused imports removed: {total_removed}")
+        return {
+            "files_cleaned": files_cleaned,
+            "total_removed": total_removed,
+            "details": details
+        }
 
-    def remove_duplicate_imports(self, root_path: str, context: Context):
-        print("   - Scanning for duplicate imports...")
+    def remove_duplicate_imports(self, root_path: str, context: Context) -> dict:
         files_cleaned = 0
         total_removed = 0
+        details = []
         
         for file_path in context.file_system.walk_files(root_path):
-            if not file_path.endswith((".kt", ".ts", ".js", ".py")):
+            if file_path.endswith((".txt", ".md", ".json", ".ini", ".toml")):
                 continue
                 
             content = context.file_system.read_file(file_path)
@@ -84,7 +112,7 @@ class CleanupPlugin:
             for line in lines:
                 stripped = line.strip()
                 # Unified heuristic for imports across languages
-                is_import = stripped.startswith(("import ", "from "))
+                is_import = stripped.startswith(("import ", "from ", "use "))
                 
                 if is_import:
                     if stripped in seen_imports:
@@ -99,7 +127,10 @@ class CleanupPlugin:
                 context.file_system.write_file(file_path, new_content)
                 files_cleaned += 1
                 total_removed += duplicates_found
-                print(f"     - Removed {duplicates_found} duplicates in {file_path}")
+                details.append({"file": file_path, "removed_count": duplicates_found})
 
-        print(f"   Files cleaned: {files_cleaned}")
-        print(f"   Duplicate imports removed: {total_removed}")
+        return {
+            "files_cleaned": files_cleaned,
+            "total_removed": total_removed,
+            "details": details
+        }

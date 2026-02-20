@@ -20,7 +20,7 @@ class SmartRenameUseCase:
             
             for file_path in self.file_system.walk_files(root_path):
                 # Only check relevant file types
-                if not file_path.endswith((".kt", ".xml", ".gradle", ".toml", ".py", ".md")):
+                if not file_path.endswith((".kt", ".java", ".xml", ".gradle", ".toml", ".py", ".md", ".ts", ".tsx", ".js", ".jsx", ".cs", ".rs", ".go", ".c", ".cpp", ".cc", ".h", ".hpp", ".scala", ".rb")):
                     continue
                     
                 content = self.file_system.read_file(file_path)

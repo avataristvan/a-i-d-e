@@ -22,9 +22,11 @@ def test_handle_read_full_file(temp_dir, test_context, capsys):
     plugin.handle_read(args, test_context)
     
     captured = capsys.readouterr()
-    assert "Total Lines: 3" in captured.out
-    assert "1: line 1" in captured.out
-    assert "3: line 3" in captured.out
+    import json
+    data = json.loads(captured.out)
+    assert data["data"]["total_lines"] == 3
+    assert "1: line 1" in data["data"]["content"]
+    assert "3: line 3" in data["data"]["content"]
 
 def test_handle_read_with_selection(temp_dir, test_context, capsys):
     test_file = os.path.join(temp_dir, "test.txt")
@@ -36,11 +38,14 @@ def test_handle_read_with_selection(temp_dir, test_context, capsys):
     plugin.handle_read(args, test_context)
     
     captured = capsys.readouterr()
-    assert "Showing lines 2 to 3" in captured.out
-    assert "2: line 2" in captured.out
-    assert "3: line 3" in captured.out
-    assert "1: line 1" not in captured.out
-    assert "4: line 4" not in captured.out
+    import json
+    data = json.loads(captured.out)
+    assert data["data"]["start_line"] == 2
+    assert data["data"]["end_line"] == 3
+    assert "2: line 2" in data["data"]["content"]
+    assert "3: line 3" in data["data"]["content"]
+    assert "1: line 1" not in data["data"]["content"]
+    assert "4: line 4" not in data["data"]["content"]
 
 def test_handle_read_file_not_found(temp_dir, test_context, capsys):
     plugin = CodeInspectionPlugin()
@@ -49,4 +54,7 @@ def test_handle_read_file_not_found(temp_dir, test_context, capsys):
     plugin.handle_read(args, test_context)
     
     captured = capsys.readouterr()
-    assert "❌ File not found" in captured.out
+    import json
+    data = json.loads(captured.out)
+    assert data["success"] is False
+    assert "File not found" in data["error"]

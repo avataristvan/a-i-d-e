@@ -17,13 +17,11 @@ class ImplementInterfaceUseCase:
             # Find the interface bounds
             iface_start, iface_end = strategy.find_symbol_range(lines, interface_name)
             if not iface_start:
-                print(f"❌ Interface '{interface_name}' not found.")
                 return False
                 
             # Find the target class bounds
             class_start, class_end = strategy.find_symbol_range(lines, class_name)
             if not class_start:
-                print(f"❌ Class '{class_name}' not found.")
                 return False
 
             # Extract the interface body
@@ -34,7 +32,6 @@ class ImplementInterfaceUseCase:
             methods = self._extract_method_signatures(iface_body, file_path)
             
             if not methods:
-                print(f"⚠️ No methods found in interface '{interface_name}'.")
                 return False
                 
             # See which ones are missing from the concrete class
@@ -46,7 +43,6 @@ class ImplementInterfaceUseCase:
                      missing_methods.append((method_sig, method_name))
                      
             if not missing_methods:
-                print(f"✅ Class '{class_name}' already implements all methods of '{interface_name}'.")
                 return True
                 
             # Inject missing methods at the bottom of the class
@@ -73,12 +69,9 @@ class ImplementInterfaceUseCase:
 
             new_content = "\n".join(lines) + "\n"
             self.file_system.write_file(file_path, new_content)
-            
-            print(f"✅ Implemented {len(missing_methods)} methods for '{class_name}'.")
             return True
 
         except Exception as e:
-            print(f"❌ Failed to implement interface: {e}")
             return False
 
     def _extract_method_signatures(self, body: str, file_path: str):

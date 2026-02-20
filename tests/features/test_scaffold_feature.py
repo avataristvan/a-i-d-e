@@ -44,11 +44,12 @@ def test_scaffold_feature_kotlin():
     assert infra_file in fs.files
     assert "class UserProfileRepositoryImpl" in fs.files[infra_file]
 
-def test_scaffold_feature_unsupported_stack():
+def test_scaffold_feature_generic_fallback():
     fs = MockFileSystem()
     use_case = ScaffoldFeatureUseCase(fs)
     
     success = use_case.execute("UserProfile", "ruby", "/fake/src")
     
-    assert success is False
-    assert len(fs.files) == 0
+    assert success is True
+    assert len(fs.files) > 0
+    assert "/fake/src/userprofile/domain/UserprofileEntity.rb" in fs.files

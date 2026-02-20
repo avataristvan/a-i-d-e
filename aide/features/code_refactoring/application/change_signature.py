@@ -19,11 +19,9 @@ class ChangeSignatureUseCase:
         # 1. Find the definition file and line.
         # 2. Find all call sites.
         
-        print(f"🔎 Scanning for '{symbol_name}'...")
         locations = self.find_usages.execute(root_path, symbol_name)
         
         if not locations:
-            print(f"❌ Symbol '{symbol_name}' not found.")
             return False
 
         # Group by file to minimize IO
@@ -76,13 +74,10 @@ class ChangeSignatureUseCase:
                          
                          new_line = strategy.update_signature_string(line, symbol_name, is_definition=True, insertion=new_param_def)
                          if new_line != line:
-                             if dry_run:
-                                 print(f"   [Dry Run] Would update definition in {relative_path}:{line_idx}")
-                             else:
+                             if not dry_run:
                                  lines[idx] = new_line
                                  updated_lines_indices.add(idx)
                                  total_updates += 1
-                                 print(f"   Updated definition in {relative_path}:{line_idx}")
 
                      else:
                          # Update Call Site
@@ -90,20 +85,16 @@ class ChangeSignatureUseCase:
                          if default_value:
                              new_line = strategy.update_signature_string(line, symbol_name, is_definition=False, insertion=default_value)
                              if new_line != line:
-                                 if dry_run:
-                                     print(f"   [Dry Run] Would update call in {relative_path}:{line_idx}")
-                                 else:
+                                 if not dry_run:
                                      lines[idx] = new_line
                                      updated_lines_indices.add(idx)
                                      total_updates += 1
-                                     print(f"   Updated call in {relative_path}:{line_idx}")
 
                 if not dry_run:
                     self.file_system.write_file(full_path, "\n".join(lines))
 
             except Exception as e:
-                print(f"❌ Failed to update {relative_path}: {e}")
+                return False
 
-        print(f"✅ Updated {total_updates} locations.")
         return True
 

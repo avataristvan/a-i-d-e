@@ -19,11 +19,9 @@ class ExtractFunctionUseCase:
                 start_line = int(start_line_str)
                 end_line = int(end_line_str)
             except ValueError:
-                print("❌ Invalid selection format. Use 'start_line:end_line' (e.g. 10:20)")
                 return False
 
             if start_line < 1 or end_line > len(lines) or start_line > end_line:
-                print(f"❌ Selection out of bounds: {start_line}:{end_line} (File has {len(lines)} lines)")
                 return False
 
             # Extract lines (0-indexed for list access)
@@ -80,19 +78,12 @@ class ExtractFunctionUseCase:
             
             new_content = "\n".join(new_lines)
             
-            if dry_run:
-                print(f"🔍 [Dry Run] Would extract function '{function_name}' with parameters: {parameters}")
-                # print(f"--- New Function Preview ---\n{new_function_code}")
-            else:
+            if not dry_run:
                 self.file_system.write_file(file_path, new_content)
-                print(f"✅ Extracted function '{function_name}' with parameters: {parameters}")
             
             return True
 
         except Exception as e:
-            print(f"❌ Extraction failed: {e}")
-            import traceback
-            traceback.print_exc()
             return False
 
     def _get_indentation(self, line: str) -> str:

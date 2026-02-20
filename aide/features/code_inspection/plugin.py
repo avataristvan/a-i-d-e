@@ -1,3 +1,4 @@
+import json
 from argparse import _SubParsersAction
 import os
 from aide.core.context import Context
@@ -23,7 +24,14 @@ class CodeInspectionPlugin:
 
     def handle_outline(self, args, context: Context):
         use_case = OutlineUseCase(context.file_system, context.language_parser)
-        print(use_case.execute(args.pattern))
+        outline_data = use_case.execute(args.pattern)
+        
+        result = {
+            "success": True,
+            "message": "Outline generation complete.",
+            "data": {"outline": outline_data}
+        }
+        print(json.dumps(result, indent=2))
 
     def handle_read(self, args, context: Context):
         if os.path.exists(args.file):
@@ -40,30 +48,43 @@ class CodeInspectionPlugin:
                     if len(parts) > 1:
                         end_line = int(parts[1])
                 except ValueError:
-                    print(f"❌ Invalid selection format: {args.selection}. Use start:end (e.g. 10:20)")
+                    print(json.dumps({"success": False, "error": f"Invalid selection format: {args.selection}. Use start:end (e.g. 10:20)"}))
                     return
-
-            print(f"File Path: `file://{os.path.abspath(args.file)}`")
-            print(f"Total Lines: {len(lines)}")
-            print(f"Total Bytes: {len(content)}")
-            print(f"Showing lines {start_line} to {end_line}")
             
+            read_lines = []
             for i in range(start_line - 1, end_line):
                 if i < len(lines):
-                    print(f"{i+1}: {lines[i]}")
+                    read_lines.append(f"{i+1}: {lines[i]}")
+
+            result = {
+                "success": True,
+                "message": "File read complete.",
+                "data": {
+                    "file_path": os.path.abspath(args.file),
+                    "total_lines": len(lines),
+                    "total_bytes": len(content),
+                    "start_line": start_line,
+                    "end_line": end_line,
+                    "content": "\n".join(read_lines)
+                }
+            }
+            print(json.dumps(result, indent=2))
         else:
-            print(f"❌ File not found: {args.file}")
+            print(json.dumps({"success": False, "error": f"File not found: {args.file}"}))
 
     def handle_usages(self, args, context: Context):
         from aide.features.code_inspection.application.find_usages import FindUsagesUseCase
         use_case = FindUsagesUseCase(context.file_system, context.language_parser)
         
-        print(f"🔎 Searching for usages of '{args.symbol}' in {args.root}...")
         results = use_case.execute(args.root, args.symbol)
         
-        if results:
-            print(f"✅ Found {len(results)} usages:")
-            for usage in results:
-                print(f"   {usage}")
-        else:
-            print(f"ℹ️  No usages found for '{args.symbol}'")
+        payload = {
+            "success": True,
+            "message": f"Found {len(results)} usages." if results else "No usages found.",
+            "data": {
+                "symbol": args.symbol,
+                "root": args.root,
+                "usages": results
+            }
+        }
+        print(json.dumps(payload, indent=2))
