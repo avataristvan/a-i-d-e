@@ -22,6 +22,13 @@ class CodeInspectionPlugin:
         parser_usages.add_argument("--root", default=".", help="Root directory to search in")
         parser_usages.set_defaults(func=lambda args: self.handle_usages(args, context))
 
+        # Find Impact Command
+        parser_impact = subparsers.add_parser("find-impact", help="Find all files and tests impacted by a symbol")
+        parser_impact.add_argument("--symbol", required=True, help="Symbol name to analyze")
+        parser_impact.add_argument("--file", help="File where the symbol is defined (optional)")
+        parser_impact.add_argument("--format", default="json", choices=["json", "text"], help="Output format")
+        parser_impact.set_defaults(func=lambda args: self.handle_find_impact(args, context))
+
     def handle_outline(self, args, context: Context):
         use_case = OutlineUseCase(context.file_system, context.language_parser)
         outline_data = use_case.execute(args.pattern)
@@ -88,3 +95,31 @@ class CodeInspectionPlugin:
             }
         }
         print(json.dumps(payload, indent=2))
+
+    def handle_find_impact(self, args, context: Context):
+        from aide.features.code_inspection.application.find_impact import FindImpactUseCase
+        use_case = FindImpactUseCase(context.file_system, context.language_parser, context.strategy_provider)
+        
+        results = use_case.execute(args.symbol, args.file)
+        
+        payload = {
+            "success": True,
+            "message": f"Found {len(results.get('impacted_files', []))} impacted files and {len(results.get('impacted_tests', []))} impacted tests.",
+            "data": {
+                "symbol": args.symbol,
+                "source_file": args.file,
+                "impacted_files": results.get("impacted_files", []),
+                "impacted_tests": results.get("impacted_tests", [])
+            }
+        }
+        
+        if args.format == "json":
+            print(json.dumps(payload, indent=2))
+        else:
+            print(f"💥 Impact Analysis for '{args.symbol}'")
+            print(f"Impacted Source Files ({len(results.get('impacted_files', []))}):")
+            for f in results.get("impacted_files", []):
+                print(f"  - {f}")
+            print(f"Impacted Test Files ({len(results.get('impacted_tests', []))}):")
+            for f in results.get("impacted_tests", []):
+                print(f"  - {f}")
