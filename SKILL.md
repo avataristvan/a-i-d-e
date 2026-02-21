@@ -11,6 +11,8 @@ Supported Languages: **Kotlin, TypeScript, JavaScript, Python, C#, Rust, Go, C++
 
 **Security**: AIDE operates within a strict Path Boundary Jail. All operations are confined to the execution directory. Path traversal attempts (e.g. `../` or `/etc/`) will throw a `SecurityError`.
 
+**Persistence**: AIDE automatically loads environment variables from a `.env` file in the project root if present. This can be used to store `GEMINI_API_KEY`, `AIDE_LLM_API_KEY`, or `AIDE_LLM_COMMAND`.
+
 ## Commands
 
 ### `outline`
@@ -63,11 +65,18 @@ Refactor: Create interface from class and implement it.
 *(Supports Kotlin)*
 
 ### `usages`
-Inspection: Find symbol usages.
+Inspection: Find semantic symbol usages.
 - **Args**:
   - `symbol`: Symbol name to search
   - `--root`: Search root (default: .)
 - **Invoke**: `./a-i-d-e/aide.py usages <symbol> [--root <dir>]`
+
+### `find-impact`
+Inspection: Analyze imports and graph structure to output exactly which source files and test files are functionally impacted by a symbol change.
+- **Args**:
+  - `symbol`: Symbol name to check
+  - `--root`: Project root
+- **Invoke**: `./a-i-d-e/aide.py find-impact <symbol> [--root <dir>]`
 
 ### `change-signature`
 Refactor: Update function definition and call sites.
@@ -131,6 +140,11 @@ Code Generation: Deterministically generate a DTO and mapping function from a Do
 - **Args**: `--source-file` (path), `--entity` (ClassName), `--target-file` (path), `--dto` (DTOName), `--stack` (kotlin|python)
 - **Invoke**: `./a-i-d-e/aide.py project-dto --source-file <path> --entity <Entity> --target-file <path> --dto <DTO> --stack <stack>`
 
+### `implement-logic`
+Code Generation: Spawn a Sub-Agent to write deterministic logic inside a function boundary.
+- **Args**: `--target` (File::Symbol format), `--prompt` (intent), `--verify` (optional rollback test loop)
+- **Invoke**: `./a-i-d-e/aide.py implement-logic --target <file::symbol> --prompt <intent> [--verify] [-n]`
+
 ## Agentic Test Execution Tools
 
 ### `test`
@@ -150,6 +164,7 @@ Test Execution: Runs test suite with coverage and emits structured mapping of ex
 
 ## Flags
 - `-n`, `--dry-run`: Preview all changes (file writes, renames, reference updates) without applying them.
+- `--verify`: Automatically run tests after refactoring (`move-package`, `extract`, `extract-interface`, `change-signature`, `move-symbol`, `rename-symbol`). If tests fail, it instantly auto-reverts all file system changes back to exactly how they were.
 
 ## Extension
 Plugin-based. Features in `a-i-d-e/aide/features/`. Each requires `plugin.py`.

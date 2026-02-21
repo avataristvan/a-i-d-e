@@ -1,5 +1,5 @@
 from typing import Type, TypeVar, Dict, Any, Optional
-from aide.core.domain.ports import FileSystemPort
+from aide.core.domain.ports import FileSystemPort, LlmProvider
 from aide.parsing.domain.ports import LanguageParserPort
 from aide.core.infrastructure.strategy_provider import StrategyProvider
 
@@ -11,7 +11,8 @@ class Context:
     def __init__(self, 
                  file_system: Optional[FileSystemPort] = None, 
                  language_parser: Optional[LanguageParserPort] = None,
-                 strategy_provider: Optional[StrategyProvider] = None):
+                 strategy_provider: Optional[StrategyProvider] = None,
+                 llm_provider: Optional[LlmProvider] = None):
         
         self._services: Dict[Type, Any] = {}
         
@@ -24,6 +25,8 @@ class Context:
              self.register(StrategyProvider, strategy_provider)
         else:
              self.register(StrategyProvider, StrategyProvider())
+        if llm_provider:
+             self.register(LlmProvider, llm_provider)
              
     def register(self, interface: Type[T], implementation: T) -> None:
         """Register a dependency with the DI Container."""
@@ -50,3 +53,7 @@ class Context:
     @property
     def strategy_provider(self) -> StrategyProvider:
         return self.resolve(StrategyProvider)
+
+    @property
+    def llm_provider(self) -> LlmProvider:
+        return self.resolve(LlmProvider)

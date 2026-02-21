@@ -12,6 +12,7 @@ class RefactorPlugin:
         parser.add_argument("--root", default=".", help="Project root")
         parser.add_argument("--src-root", default="app/src/main/java", help="Source root directory containing the packages")
         parser.add_argument("--dry-run", "-n", action="store_true", help="Preview changes without writing to files")
+        parser.add_argument("--verify", action="store_true", help="Automatically run tests and revert changes if they fail")
         parser.set_defaults(func=lambda args: self.handle_move_package(args, context))
 
         # aide refactor extract
@@ -21,6 +22,7 @@ class RefactorPlugin:
         extract_parser.add_argument("--name", required=True, help="New function name")
         extract_parser.add_argument("--scope", default="private", help="Visibility (private, internal, public)")
         extract_parser.add_argument("--dry-run", "-n", action="store_true", help="Preview changes without writing to files")
+        extract_parser.add_argument("--verify", action="store_true", help="Automatically run tests and revert changes if they fail")
         extract_parser.set_defaults(func=lambda args: self.handle_extract(args, context))
 
         # aide refactor change-signature
@@ -30,6 +32,7 @@ class RefactorPlugin:
         sig_parser.add_argument("--default-value", required=True, help="Default value for call sites (e.g. '0')")
         sig_parser.add_argument("--root", default=".", help="Root directory")
         sig_parser.add_argument("--dry-run", "-n", action="store_true", help="Preview changes without writing to files")
+        sig_parser.add_argument("--verify", action="store_true", help="Automatically run tests and revert changes if they fail")
         sig_parser.set_defaults(func=lambda args: self.handle_change_signature(args, context))
 
         # aide refactor move-symbol
@@ -39,6 +42,7 @@ class RefactorPlugin:
         move_parser.add_argument("--dest", required=True, help="Destination file path")
         move_parser.add_argument("--root", default=".", help="Project root")
         move_parser.add_argument("--dry-run", "-n", action="store_true", help="Preview changes without writing to files")
+        move_parser.add_argument("--verify", action="store_true", help="Automatically run tests and revert changes if they fail")
         move_parser.set_defaults(func=lambda args: self.handle_move_symbol(args, context))
 
         # aide refactor rename-symbol
@@ -47,6 +51,7 @@ class RefactorPlugin:
         rename_parser.add_argument("new_symbol", help="New symbol name")
         rename_parser.add_argument("--root", default=".", help="Project root")
         rename_parser.add_argument("--dry-run", "-n", action="store_true", help="Preview changes without writing to files")
+        rename_parser.add_argument("--verify", action="store_true", help="Automatically run tests and revert changes if they fail")
         rename_parser.set_defaults(func=lambda args: self.handle_rename_symbol(args, context))
 
         # aide refactor extract-interface
@@ -55,13 +60,28 @@ class RefactorPlugin:
         ext_int_parser.add_argument("--class-name", required=True, help="Class name to extract from")
         ext_int_parser.add_argument("--interface-name", help="New interface name (default: same as class)")
         ext_int_parser.add_argument("--dry-run", "-n", action="store_true", help="Preview changes without writing to files")
+        ext_int_parser.add_argument("--verify", action="store_true", help="Automatically run tests and revert changes if they fail")
         ext_int_parser.set_defaults(func=lambda args: self.handle_extract_interface(args, context))
 
     def handle_extract_interface(self, args, context: Context):
         from aide.features.code_refactoring.application.extract_interface import ExtractInterfaceUseCase
         
+        reverted = False
+        if getattr(args, "verify", False): context.file_system.start_transaction()
+        
         use_case = ExtractInterfaceUseCase(context.file_system, context.language_parser, context.strategy_provider)
         success = use_case.execute(args.file, args.class_name, args.interface_name, dry_run=args.dry_run)
+        
+        if success and getattr(args, "verify", False) and not args.dry_run:
+            from aide.features.testing_execution.application.execute_tests import ExecuteTestsUseCase
+            test_use_case = ExecuteTestsUseCase(context.file_system)
+            test_res = test_use_case.execute(args.root_path if hasattr(args, "root_path") else ".")
+            if not test_res.get("success", False):
+                context.file_system.rollback()
+                success = False
+                reverted = True
+            else:
+                context.file_system.commit()
         
         result = {
             "success": success,
@@ -70,7 +90,8 @@ class RefactorPlugin:
                 "file": args.file,
                 "class_name": args.class_name,
                 "interface_name": args.interface_name,
-                "dry_run": args.dry_run
+                "dry_run": args.dry_run,
+                "reverted": reverted
             }
         }
         print(json.dumps(result, indent=2))
@@ -78,8 +99,23 @@ class RefactorPlugin:
     def handle_rename_symbol(self, args, context: Context):
         from aide.features.code_refactoring.application.smart_rename import SmartRenameUseCase
         
+        reverted = False
+        if getattr(args, "verify", False): context.file_system.start_transaction()
+        
         use_case = SmartRenameUseCase(context.file_system)
         res = use_case.execute(args.root, args.old_symbol, args.new_symbol, use_word_boundary=True, dry_run=args.dry_run)
+        
+        if res.success and getattr(args, "verify", False) and not args.dry_run:
+            from aide.features.testing_execution.application.execute_tests import ExecuteTestsUseCase
+            test_use_case = ExecuteTestsUseCase(context.file_system)
+            test_res = test_use_case.execute(args.root)
+            if not test_res.get("success", False):
+                context.file_system.rollback()
+                res.success = False
+                res.message = "Tests failed. Changes reverted."
+                reverted = True
+            else:
+                context.file_system.commit()
         
         result = {
             "success": res.success,
@@ -88,7 +124,8 @@ class RefactorPlugin:
                 "files_changed": res.files_changed,
                 "total_replacements": res.total_replacements,
                 "old_symbol": args.old_symbol,
-                "new_symbol": args.new_symbol
+                "new_symbol": args.new_symbol,
+                "reverted": reverted
             }
         }
         print(json.dumps(result, indent=2))
@@ -110,6 +147,9 @@ class RefactorPlugin:
         old_package = rel_path.replace(os.sep, ".")
         new_package = args.dest_package
         
+        reverted = False
+        if getattr(args, "verify", False): context.file_system.start_transaction()
+        
         # Calculate destination path (assume standard dot-to-slash mapping)
         dest_rel_path = new_package.replace(".", os.sep)
         dest_path = os.path.join(src_root, dest_rel_path)
@@ -120,12 +160,24 @@ class RefactorPlugin:
             if not args.dry_run:
                 context.file_system.move_path(src_path, dest_path)
         except Exception as e:
+             if getattr(args, "verify", False): context.file_system.rollback()
              print(json.dumps({"success": False, "error": f"Failed to move files: {e}"}))
              return
 
         # Smart Rename package refs
         use_case = SmartRenameUseCase(context.file_system)
         res = use_case.execute(args.root, old_package, new_package, dry_run=args.dry_run)
+        
+        if res.success and getattr(args, "verify", False) and not args.dry_run:
+            from aide.features.testing_execution.application.execute_tests import ExecuteTestsUseCase
+            test_use_case = ExecuteTestsUseCase(context.file_system)
+            test_res = test_use_case.execute(args.root)
+            if not test_res.get("success", False):
+                context.file_system.rollback()
+                res.success = False
+                reverted = True
+            else:
+                context.file_system.commit()
         
         result = {
             "success": res.success,
@@ -135,7 +187,8 @@ class RefactorPlugin:
                 "new_package": new_package,
                 "files_updated": res.files_changed,
                 "replacements": res.total_replacements,
-                "dry_run": args.dry_run
+                "dry_run": args.dry_run,
+                "reverted": reverted
             }
         }
         print(json.dumps(result, indent=2))
@@ -149,7 +202,22 @@ class RefactorPlugin:
             return
         
         use_case = ExtractFunctionUseCase(context.file_system, context.strategy_provider)
+        
+        reverted = False
+        if getattr(args, "verify", False): context.file_system.start_transaction()
+        
         success = use_case.execute(file_path, args.selection, args.name, args.scope, dry_run=args.dry_run)
+        
+        if success and getattr(args, "verify", False) and not args.dry_run:
+            from aide.features.testing_execution.application.execute_tests import ExecuteTestsUseCase
+            test_use_case = ExecuteTestsUseCase(context.file_system)
+            test_res = test_use_case.execute(".")
+            if not test_res.get("success", False):
+                context.file_system.rollback()
+                success = False
+                reverted = True
+            else:
+                context.file_system.commit()
         
         result = {
             "success": success,
@@ -158,7 +226,8 @@ class RefactorPlugin:
                 "file": args.file,
                 "selection": args.selection,
                 "name": args.name,
-                "dry_run": args.dry_run
+                "dry_run": args.dry_run,
+                "reverted": reverted
             }
         }
         print(json.dumps(result, indent=2))
@@ -166,8 +235,22 @@ class RefactorPlugin:
     def handle_change_signature(self, args, context: Context):
         from aide.features.code_refactoring.application.change_signature import ChangeSignatureUseCase
         
+        reverted = False
+        if getattr(args, "verify", False): context.file_system.start_transaction()
+        
         use_case = ChangeSignatureUseCase(context.file_system, context.language_parser, context.strategy_provider)
         success = use_case.execute(args.root, args.symbol, args.add_param, args.default_value, dry_run=args.dry_run)
+        
+        if success and getattr(args, "verify", False) and not args.dry_run:
+            from aide.features.testing_execution.application.execute_tests import ExecuteTestsUseCase
+            test_use_case = ExecuteTestsUseCase(context.file_system)
+            test_res = test_use_case.execute(args.root)
+            if not test_res.get("success", False):
+                context.file_system.rollback()
+                success = False
+                reverted = True
+            else:
+                context.file_system.commit()
         
         result = {
             "success": success,
@@ -176,7 +259,8 @@ class RefactorPlugin:
                 "symbol": args.symbol,
                 "add_param": args.add_param,
                 "default_value": args.default_value,
-                "dry_run": args.dry_run
+                "dry_run": args.dry_run,
+                "reverted": reverted
             }
         }
         print(json.dumps(result, indent=2))
@@ -184,8 +268,22 @@ class RefactorPlugin:
     def handle_move_symbol(self, args, context: Context):
         from aide.features.code_refactoring.application.move_symbol import MoveSymbolUseCase
         
+        reverted = False
+        if getattr(args, "verify", False): context.file_system.start_transaction()
+        
         use_case = MoveSymbolUseCase(context.file_system, context.language_parser, context.strategy_provider)
         success = use_case.execute(args.source, args.symbol, args.dest, dry_run=args.dry_run, root_path=args.root)
+        
+        if success and getattr(args, "verify", False) and not args.dry_run:
+            from aide.features.testing_execution.application.execute_tests import ExecuteTestsUseCase
+            test_use_case = ExecuteTestsUseCase(context.file_system)
+            test_res = test_use_case.execute(args.root)
+            if not test_res.get("success", False):
+                context.file_system.rollback()
+                success = False
+                reverted = True
+            else:
+                context.file_system.commit()
         
         result = {
             "success": success,
@@ -194,7 +292,8 @@ class RefactorPlugin:
                 "symbol": args.symbol,
                 "source": args.source,
                 "dest": args.dest,
-                "dry_run": args.dry_run
+                "dry_run": args.dry_run,
+                "reverted": reverted
             }
         }
         print(json.dumps(result, indent=2))

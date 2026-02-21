@@ -27,6 +27,27 @@ class FileSystemPort(ABC):
         """Deletes a file or directory."""
         pass
 
+    @abstractmethod
+    def start_transaction(self) -> None:
+        """Starts tracking file system changes for a potential rollback."""
+        pass
+
+    @abstractmethod
+    def commit(self) -> None:
+        """Commits the tracked file system changes, clearing the transaction history."""
+        pass
+
+    @abstractmethod
+    def rollback(self) -> None:
+        """Reverts all file system changes made since the transaction started."""
+        pass
+
+class LlmProvider(ABC):
+    @abstractmethod
+    def generate(self, system_prompt: str, user_prompt: str) -> str:
+        """Sends a prompt to the LLM and returns the raw string response."""
+        pass
+
 class LanguageStrategy(ABC):
     @abstractmethod
     def extract_imports_and_header(self, lines: List[str]) -> Tuple[List[str], Optional[str]]:

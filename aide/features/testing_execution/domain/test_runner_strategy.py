@@ -13,29 +13,59 @@ class TestRunnerStrategy:
 
 class PythonTestRunner(TestRunnerStrategy):
     def run_tests(self, path: str) -> Tuple[bool, str, list]:
+        import json
+        import os
+        
+        report_file = os.path.join(path if os.path.isdir(path) else os.path.dirname(path), ".report.json")
+        if os.path.exists(report_file):
+            try:
+                os.remove(report_file)
+            except OSError:
+                pass
+
         result = subprocess.run(
-            ["pytest", path, "-q", "--tb=short"], 
+            ["pytest", path, "-q", "--json-report", f"--json-report-file={report_file}"], 
             capture_output=True, 
             text=True
         )
         
-        lines = result.stdout.splitlines()
-        failures = []
-        current_failure = None
+        if not os.path.exists(report_file):
+            return False, "Test suite failed (collection error, no JSON report generated).", [{"test": "Test Suite", "error": result.stdout or result.stderr}]
+            
+        try:
+            with open(report_file, "r") as f:
+                report = json.load(f)
+        except Exception as e:
+            return False, f"Failed to parse test report: {e}", [{"test": "Test Suite", "error": result.stdout}]
+
+        summary_data = report.get("summary", {})
+        total = summary_data.get("total", 0)
+        passed = summary_data.get("passed", 0)
+        failed = summary_data.get("failed", 0) + summary_data.get("error", 0)
         
-        for line in lines:
-            if line.startswith("FAILED "):
-                if current_failure:
-                    failures.append(current_failure)
-                current_failure = {"test": line.replace("FAILED ", "").split(" - ")[0].strip(), "error": " ".join(line.split(" - ")[1:]) if " - " in line else ""}
-            elif current_failure and line.strip() and not line.startswith("="):
-                current_failure["error"] += "\n" + line
-
-        if current_failure:
-            failures.append(current_failure)
-
-        summary = lines[-1] if lines else "No output"
-        return result.returncode == 0, summary, failures
+        summary = f"{passed} passed, {failed} failed out of {total} tests"
+        
+        failures = []
+        for test in report.get("tests", []):
+            if test.get("outcome") in ["failed", "error"]:
+                test_name = test.get("nodeid", "Unknown Test")
+                # Error details can be in setup if the fixture failed, or call if the test failed
+                phase = test.get("call", {}) if "call" in test else test.get("setup", {})
+                
+                error_msg = ""
+                if "crash" in phase and phase.get("crash"):
+                    error_msg = phase["crash"].get("message", "")
+                
+                if not error_msg and "longrepr" in phase:
+                    # longrepr can be a string or a dict/list depending on the error type
+                    error_msg = str(phase.get("longrepr", ""))
+                    
+                failures.append({
+                    "test": test_name,
+                    "error": error_msg or "Unknown error"
+                })
+        
+        return result.returncode == 0 and failed == 0, summary, failures
 
     def run_coverage(self, src_dir: str, tests_dir: str) -> Tuple[bool, float, list, str]:
         import json

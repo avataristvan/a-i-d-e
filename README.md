@@ -20,6 +20,31 @@ When you include this folder in a new project, follow these steps to ensure your
 
 Once these steps are complete, any AI agent interacting with your repository will automatically recognize the `a-i-d-e` capabilities via the `SKILL.md` file and follow the workflow.
 
+### Optional: Sub-Agent Configuration
+If you wish to use AIDE's internal Sub-Agent layer to have it mechanically write logic directly into AST bounds (`aide implement-logic`), configure its LLM Provider via environment variables:
+
+**OpenAI / Groq / LM Studio Setup:**
+```bash
+export AIDE_LLM_API_KEY="your-api-key"
+export AIDE_LLM_MODEL="gpt-4o" # Optional (Defaults to gpt-4o)
+export AIDE_LLM_API_BASE="https://api.openai.com/v1" # Optional (Defaults to OpenAI)
+```
+
+**Google Gemini Setup:**
+If `GEMINI_API_KEY` is present, AIDE auto-switches to the native Google AI provider (favoring `gemini-2.0-flash`).
+```bash
+export GEMINI_API_KEY="your-google-api-key"
+```
+
+**Recursive Agent / CLI Setup:**
+Connect AIDE to an external CLI tool or custom agent handler.
+```bash
+# Example: export AIDE_LLM_COMMAND="your-custom-llm-cli"
+```
+
+> [!TIP]
+> **Multi-Model Flexibility**: Because AIDE uses the standard `/chat/completions` REST protocol, you can seamlessly point the Sub-Agent to **Groq**, **DeepSeek**, or local providers like **LM Studio** (usually `http://localhost:1234/v1`) and **Ollama** by simply overriding the `AIDE_LLM_API_BASE`.
+
 ## Core Capabilities
 
 - **`outline`**: structural code discovery (classes, methods, symbols).
@@ -29,15 +54,28 @@ Once these steps are complete, any AI agent interacting with your repository wil
 - **`move-package`**: automated package refactoring with full reference updates.
 - **`extract`**: extract code block to new function with variable analysis.
 - **`usages`**: find semantic usages of a symbol across the project.
+- **`find-impact`**: analyze imports and structure to identify all files and tests functionally impacted by a symbol change.
 - **`change-signature`**: update function signatures and all call sites safely (Multi-language).
 - **`move-symbol`**: move top-level functions/classes to new files (Multi-language).
+- **`rename-symbol`**: rename a symbol project-wide safely using accurate word boundaries.
+- **`extract-interface`**: extract a new interface from a class and automatically implement it.
+
+> **Note:** All AIDE refactoring commands (`move-package`, `extract`, `change-signature`, `move-symbol`, `rename-symbol`, `extract-interface`, `implement-logic`) support the **`--verify`** flag. When passed, AIDE performs the refactoring, automatically executes the project test suite, and instantly auto-reverts all file changes if any tests fail—providing zero-risk atomic refactoring.
 
 ### Agentic Code & Test Generation
+- **`implement-logic`**: safely spawn an internal Sub-Agent to write exact business logic inside an AST function boundary.
+- **Invoke**: `./a-i-d-e/aide.py implement-logic --target <file::symbol> --prompt <intent> [--verify] [-n]`
 - **`scaffold-feature`**: deterministically scaffold Clean Architecture domain, application, and infra layers.
 - **`implement-interface`**: mechanically inject missing method stubs from interfaces into concrete classes.
 - **`project-dto`**: automatically generate a DTO and a 1:1 schema mapping function from a Domain Entity.
 - **`register-dependency`**: safely append an import and a DI binding statement cleanly into registry files.
 - **`generate-tests` & `scaffold-mocks`**: build mock topologies and output JSON scaffolding to prepare test environments.
+
+## LLM Configuration (Sub-Agent)
+AIDE's `implement-logic` and generation features require an LLM "brain". Configure this via environment variables:
+1. **CLI/Recursive**: `export AIDE_LLM_COMMAND="antigravity"` (Highest precedence)
+2. **Native Gemini**: `export GEMINI_API_KEY="..."`
+3. **OpenAI/Generic**: `export AIDE_LLM_API_KEY="..."` (Optional: `AIDE_LLM_API_BASE`, `AIDE_LLM_MODEL`)
 
 ### Agentic Test Execution
 - **`test`**: wrap test execution to return structured JSON payloads to agents, filtering out noisy terminal traces.
