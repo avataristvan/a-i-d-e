@@ -3,32 +3,21 @@ from typing import Tuple, Optional
 from aide.core.domain.ports import FileSystemPort, LanguageStrategy, LlmProvider
 from aide.parsing.domain.ports import LanguageParserPort
 from aide.core.infrastructure.strategy_provider import StrategyProvider
+from aide.core.infrastructure.briefing_service import BriefingService
 
 class ImplementLogicUseCase:
     def __init__(self, 
                  file_system: FileSystemPort, 
                  language_parser: LanguageParserPort,
                  strategy_provider: StrategyProvider,
-                 llm_provider: LlmProvider):
+                 llm_provider: LlmProvider,
+                 briefing_service: BriefingService):
         self.file_system = file_system
         self.language_parser = language_parser
         self.strategy_provider = strategy_provider
         self.llm_provider = llm_provider
+        self.briefing_service = briefing_service
 
-    def _get_indentation(self, line: str) -> str:
-        """Returns the leading whitespace of a line."""
-        return line[:len(line) - len(line.lstrip())]
-
-    def _determine_body_indentation(self, lines: list[str], start_line: int, end_line: int) -> str:
-        """Determines the correct body indentation by looking at the first non-empty line after the signature."""
-        for i in range(start_line, end_line):
-            line_content = lines[i]
-            if line_content.strip() and not line_content.strip().startswith("{"):
-                return self._get_indentation(line_content)
-                
-        # Fallback: Signature indentation + 4 spaces
-        sig_indent = self._get_indentation(lines[start_line - 1])
-        return sig_indent + "    "
 
     def execute(self, file_path: str, symbol_name: str, prompt: str, dry_run: bool = False) -> Tuple[bool, str]:
         """
@@ -53,29 +42,37 @@ class ImplementLogicUseCase:
             return False, f"Symbol '{symbol_name}' not found in {file_path}"
 
         # 2. Extract context
-        signature_lines = lines[start_line - 1:start_line] # Very naive, but ASTs might span multiple lines. We'll grab full block.
+        # We grab the full block to provide to the LLM and to replace later.
         full_block = lines[start_line - 1:end_line]
-        
-        body_indentation = self._determine_body_indentation(lines, start_line, end_line)
+
+        # 2.5 Load Persona Rules, Dependencies & Symbol Map
+        persona_rules = self.briefing_service.get_persona_rules()
+        dependency_context = self.briefing_service.get_dependency_context(file_path)
+        symbol_map = self.briefing_service.get_symbol_map(file_path, content)
 
         # 3. Construct the prompt
         system_prompt = (
-            "You are an AIDE Sub-Agent Logic Generator. You operate as a pure function body compiler.\n\n"
+            "You are an AIDE Sub-Agent Logic Generator. You operate as a pure AST block replacement engine.\n\n"
+            "PERSONA RULES:\n"
+            f"{persona_rules}\n\n"
+            "PROJECT CONTEXT (DEPENDENCIES):\n"
+            f"{dependency_context}\n\n"
+            "FILE ARCHITECTURE (SYMBOL MAP):\n"
+            f"{symbol_map}\n\n"
             "CONTEXT RULES:\n"
-            "1. You are given the signature of a function/method and its surrounding context.\n"
+            "1. You are given the ENTIRE source code block of a function or class (including signature and braces/indentation).\n"
             "2. You must implement the business logic described by the user's prompt.\n"
-            f"3. Your resulting code MUST use exactly '{body_indentation}' at the base indentation level for the body.\n"
+            "3. Your resulting code MUST be the EXACT, COMPLETE replacement block. Do not omit the function signature or trailing braces.\n"
             "4. Do NOT output markdown code blocks (e.g., ```python).\n"
-            "5. Do NOT repeat the function signature or the closing brace. ONLY output the inner body execution lines.\n"
-            "6. Do NOT explain your code. Output ONLY raw executable code.\n"
-            "7. Assume any required imports are already present at the top of the file."
+            "5. Do NOT explain your code. Output ONLY raw executable code.\n"
+            "6. Preserve the exact indentation of the original signature."
         )
         
         user_prompt = (
-            f"Target Method Context:\n"
+            f"Target Block Context:\n"
             f"{chr(10).join(full_block)}\n\n"
             f"Task: {prompt}\n\n"
-            f"Provide only the replacement body:"
+            f"Provide the complete, raw replacement block:"
         )
 
         try:
@@ -84,47 +81,43 @@ class ImplementLogicUseCase:
             return False, f"LLM Generation failed: {e}"
 
         # Clean the LLM response in case it hallucinated markdown anyway
-        cleaned_response = llm_response.strip()
-        if cleaned_response.startswith("```"):
-            lines_resp = cleaned_response.splitlines()
+        cleaned_response = llm_response
+        
+        # Remove empty newlines at start and end without destroying leading spaces
+        while cleaned_response.startswith("\n") or cleaned_response.startswith("\r"):
+            cleaned_response = cleaned_response[1:]
+        while cleaned_response.endswith("\n") or cleaned_response.endswith("\r"):
+            cleaned_response = cleaned_response[:-1]
+            
+        if cleaned_response.strip().startswith("```"):
+            lines_resp = cleaned_response.strip().splitlines()
             if len(lines_resp) > 1 and lines_resp[0].startswith("```"):
                 lines_resp = lines_resp[1:]
             if len(lines_resp) > 0 and lines_resp[-1].startswith("```"):
                 lines_resp = lines_resp[:-1]
-            cleaned_response = "\n".join(lines_resp).strip()
+            cleaned_response = "\n".join(lines_resp)
 
         # 4. Splicing
-        # We need to replace everything *between* the signature and the end of the original block.
-        # This is language specific, but generically, for Python, replacing everything after the `def ...:`
-        # For C-like languages, replacing everything between `{` and `}`.
+        # Because we asked the LLM for the *entire block*, we simply replace the exact lines bounds.
+        new_block_lines = cleaned_response.splitlines()
         
-        # Generic heuristic:
-        # Keep the first line of the block (signature), and the last line (if it's just a closure brace)
-        # We'll rely on the LLM to provide properly indented contents, and append it after the signature.
-        
-        # A safer AST-agnostic replacement logic:
-        new_block = [full_block[0]] # Keep definition line
-        
-        # Add LLM output, ensuring proper base indentation if the LLM didn't indent properly
-        for resp_line in cleaned_response.splitlines():
-             if resp_line.strip() == "":
-                 new_block.append("")
-             else:
-                 # If the line already starts with the correct indentation, keep it, otherwise force it
-                 if not resp_line.startswith(body_indentation) and not resp_line.startswith(" ") and not resp_line.startswith("\t"):
-                     new_block.append(body_indentation + resp_line)
-                 else:
-                     new_block.append(resp_line)
-        
-        # Keep closing brace if it was a distinct line (common in C/Java/Kotlin/TS)
-        if full_block[-1].strip() == "}":
-            new_block.append(full_block[-1])
+        # Ensure that if the LLM stripped the base indentation of the signature, we restore it.
+        # This is a safety check: if the original block had 4 spaces indent, and the LLM returned it at 0 spaces,
+        # we re-pad the entire block.
+        if len(full_block) > 0 and len(new_block_lines) > 0:
+            original_indent_count = len(full_block[0]) - len(full_block[0].lstrip())
+            llm_indent_count = len(new_block_lines[0]) - len(new_block_lines[0].lstrip())
             
-        new_lines = lines[:start_line-1] + new_block + lines[end_line:]
-        
-        new_content = "\n".join(new_lines) + "\n"
+            # Only add padding if the LLM dropped the original base indent (it returned it flat)
+            if original_indent_count > llm_indent_count:
+                missing_spaces = original_indent_count - llm_indent_count
+                padding = " " * missing_spaces
+                new_block_lines = [padding + line if line.strip() else line for line in new_block_lines]
 
+        new_lines = lines[:start_line-1] + new_block_lines + lines[end_line:]
+
+        # 5. Result
         if not dry_run:
-            self.file_system.write_file(file_path, new_content)
-
+            self.file_system.write_file(file_path, "\n".join(new_lines))
         return True, "Logic implemented and injected successfully."
+

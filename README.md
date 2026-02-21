@@ -42,6 +42,11 @@ Connect AIDE to an external CLI tool or custom agent handler.
 # Example: export AIDE_LLM_COMMAND="your-custom-llm-cli"
 ```
 
+**Context Awareness & Rule Centralization:**
+- **Hierarchical Rules**: Set `AIDE_RULES_PATH` in your `.env` to point to a global markdown file for your AIDE persona rules. Overrides can be placed in `./workflows/use-aide-tool.md`.
+- **Dependency Awareness**: AIDE automatically scans for `package.json`, `requirements.txt`, `build.gradle`, and `libs.versions.toml` to brief sub-agents on your project's library versions.
+
+
 > [!TIP]
 > **Multi-Model Flexibility**: Because AIDE uses the standard `/chat/completions` REST protocol, you can seamlessly point the Sub-Agent to **Groq**, **DeepSeek**, or local providers like **LM Studio** (usually `http://localhost:1234/v1`) and **Ollama** by simply overriding the `AIDE_LLM_API_BASE`.
 

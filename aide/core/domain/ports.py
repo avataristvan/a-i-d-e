@@ -8,6 +8,11 @@ class FileSystemPort(ABC):
         pass
 
     @abstractmethod
+    def path_exists(self, path: str) -> bool:
+        """Checks if a path exists and is within the jail."""
+        pass
+
+    @abstractmethod
     def read_file(self, file_path: str) -> str:
         """Reads file content."""
         pass

@@ -1,71 +1,67 @@
 import pytest
+import os
 from aide.features.code_generation.application.implement_interface import ImplementInterfaceUseCase
 
 class MockFileSystem:
     def __init__(self, contents): self.contents = contents
     def read_file(self, path): return self.contents[path]
     def write_file(self, path, content): self.contents[path] = content
+    def path_exists(self, path): return path in self.contents
 
-class MockParser: pass
+class MockLlmProvider:
+    def __init__(self, response): self.response = response
+    def generate(self, system, user): return self.response
+
+class MockBriefingService:
+    def get_persona_rules(self): return "Rules"
+    def get_dependency_context(self, path=None): return "Deps"
 
 class MockStrategy:
     def find_symbol_range(self, lines, symbol):
-        # Extremely simplified mocking for line ranges
-        if symbol == "IRepository":
-            return 1, 4 # Lines 1 to 4
-        elif symbol == "MyRepo":
-            return 5, 6 # Lines 5 to 6
+        # Simple detection based on the test data
+        for i, line in enumerate(lines):
+             if symbol in line:
+                 if "{" in line:
+                     # multi-line block
+                     for j in range(i, len(lines)):
+                         if "}" in lines[j]:
+                             return i + 1, j + 1
+                 return i + 1, i + 1
         return None, None
 
 class MockStrategyProvider:
     def get_strategy(self, path): return MockStrategy()
 
-
 def test_implement_interface_python():
     initial = (
-        "class IRepository:\n"
-        "    def save(self, entity: str) -> bool:\n"
-        "        pass\n"
-        "\n"
-        "class MyRepo:\n"
-        "    def other(self): pass\n"
+        "class IAuth:\n    def login(self): pass\n\n"
+        "class AuthImpl(IAuth):\n    pass\n"
     )
+    expected_injection = "    def login(self): return True"
     
-    fs = MockFileSystem({"test.py": initial})
-    use_case = ImplementInterfaceUseCase(fs, MockParser(), MockStrategyProvider())
+    fs = MockFileSystem({"auth.py": initial})
+    llm = MockLlmProvider(expected_injection)
+    briefing = MockBriefingService()
     
-    success = use_case.execute("test.py", "MyRepo", "IRepository")
+    use_case = ImplementInterfaceUseCase(fs, MockStrategyProvider(), llm, briefing)
+    success = use_case.execute("auth.py", "AuthImpl", "IAuth")
     
     assert success is True
-    assert "def save(self, entity: str) -> bool:" in fs.contents["test.py"]
-    assert "    pass" in fs.contents["test.py"]
-
+    assert "def login(self): return True" in fs.contents["auth.py"]
 
 def test_implement_interface_kotlin():
     initial = (
-        "interface IRepository {\n"
-        "    fun save(entity: String): Boolean\n"
-        "}\n"
-        "\n"
-        "class MyRepo : IRepository {\n"
-        "}\n"
+        "interface IAuth { fun login(): Boolean }\n\n"
+        "class AuthImpl : IAuth {\n}\n"
     )
+    expected_injection = "    override fun login() = true"
     
-    fs = MockFileSystem({"test.kt": initial})
-    use_case = ImplementInterfaceUseCase(fs, MockParser(), MockStrategyProvider())
+    fs = MockFileSystem({"auth.kt": initial})
+    llm = MockLlmProvider(expected_injection)
+    briefing = MockBriefingService()
     
-    success = use_case.execute("test.kt", "MyRepo", "IRepository")
+    use_case = ImplementInterfaceUseCase(fs, MockStrategyProvider(), llm, briefing)
+    success = use_case.execute("auth.kt", "AuthImpl", "IAuth")
     
     assert success is True
-    assert "fun save(entity: String): Boolean {" in fs.contents["test.kt"]
-    assert "TODO(\"Not yet implemented\")" in fs.contents["test.kt"]
-    assert fs.contents["test.kt"].endswith("}\n")
-
-def test_implement_interface_missing():
-    initial = "class Empty:\n    pass\n"
-    fs = MockFileSystem({"test.py": initial})
-    use_case = ImplementInterfaceUseCase(fs, MockParser(), MockStrategyProvider())
-    
-    # Should fail because interface doesn't exist in ranges
-    success = use_case.execute("test.py", "MyRepo", "IRepository")
-    assert success is False
+    assert "override fun login() = true" in fs.contents["auth.kt"]

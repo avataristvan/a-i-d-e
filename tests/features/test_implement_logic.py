@@ -6,6 +6,7 @@ from aide.core.context import Context
 from aide.core.infrastructure.os_file_system import OsFileSystem
 from aide.parsing.infrastructure.parsers import RegexLanguageParser, CompositeLanguageParser
 from aide.parsing.infrastructure.ast_parsers import AstPythonParser
+from aide.core.infrastructure.briefing_service import BriefingService
 from aide.features.implementation.application.implement_logic import ImplementLogicUseCase
 
 class MockLlmProvider(LlmProvider):
@@ -32,9 +33,12 @@ def test_env(tmp_path):
     composite_parser.register(".py", AstPythonParser())
     
     # We'll use a Mock LLM
-    mock_llm = MockLlmProvider("return a + b")
+    mock_llm = MockLlmProvider("    def method(self):\n        return a + b")
+
+    # Setup Briefing Service
+    briefing_service = BriefingService(file_system, composite_parser)
     
-    context = Context(file_system=file_system, language_parser=composite_parser, llm_provider=mock_llm)
+    context = Context(file_system=file_system, language_parser=composite_parser, llm_provider=mock_llm, briefing_service=briefing_service)
     
     return context, mock_llm, str(tmp_path)
 
@@ -59,9 +63,13 @@ class MathUtils:
         file_system=context.file_system,
         language_parser=context.language_parser,
         strategy_provider=context.strategy_provider,
-        llm_provider=mock_llm
+        llm_provider=mock_llm,
+        briefing_service=context.briefing_service
     )
     
+    # Mock LLM returns the full block
+    mock_llm.expected_response = "    def add(self, a: int, b: int) -> int:\n        return a + b"
+
     success, message = use_case.execute(file_path, "add", "Return the sum of a and b")
     
     assert success is True
@@ -85,8 +93,8 @@ class MathUtils:
 def test_implement_logic_forces_indentation(test_env):
     context, mock_llm, tmp_dir = test_env
     
-    # Mock LLM returns poorly indented code
-    mock_llm.expected_response = "return a + b"
+    # Mock LLM returns poorly indented code (stripped of base indent)
+    mock_llm.expected_response = "def calculate(a, b):\n    return a + b"
     
     file_path = os.path.join(tmp_dir, "math_utils2.py")
     original_code = '''
@@ -100,7 +108,8 @@ def calculate(a, b):
         file_system=context.file_system,
         language_parser=context.language_parser,
         strategy_provider=context.strategy_provider,
-        llm_provider=mock_llm
+        llm_provider=mock_llm,
+        briefing_service=context.briefing_service
     )
     
     success, _ = use_case.execute(file_path, "calculate", "do it")
@@ -121,7 +130,7 @@ def test_implement_logic_dry_run(test_env):
     original_code = "def foo():\n    pass\n"
     context.file_system.write_file(file_path, original_code)
     
-    use_case = ImplementLogicUseCase(context.file_system, context.language_parser, context.strategy_provider, mock_llm)
+    use_case = ImplementLogicUseCase(context.file_system, context.language_parser, context.strategy_provider, mock_llm, context.briefing_service)
     
     success, message = use_case.execute(file_path, "foo", "do it", dry_run=True)
     

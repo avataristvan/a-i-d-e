@@ -37,7 +37,8 @@ class ImplementationPlugin:
             file_system=context.file_system,
             language_parser=context.language_parser,
             strategy_provider=context.strategy_provider,
-            llm_provider=llm_provider
+            llm_provider=llm_provider,
+            briefing_service=context.briefing_service
         )
 
         reverted = False

@@ -9,9 +9,10 @@ binary: ./a-i-d-e/aide.py
 CLI tool for deterministic file operations & refactoring.
 Supported Languages: **Kotlin, TypeScript, JavaScript, Python, C#, Rust, Go, C++, Scala, Ruby**.
 
-**Security**: AIDE operates within a strict Path Boundary Jail. All operations are confined to the execution directory. Path traversal attempts (e.g. `../` or `/etc/`) will throw a `SecurityError`.
-
-**Persistence**: AIDE automatically loads environment variables from a `.env` file in the project root if present. This can be used to store `GEMINI_API_KEY`, `AIDE_LLM_API_KEY`, or `AIDE_LLM_COMMAND`.
+- **.env Persistence**: AIDE automatically loads `.env` from the project root. This can be used to store `GEMINI_API_KEY`, `AIDE_LLM_API_KEY`, or `AIDE_LLM_COMMAND`.
+- **Rule Centralization**: Set `AIDE_RULES_PATH` for global persona rules.
+- **Dependency Context**: AIDE automatically briefs sub-agents on library versions from `package.json`, `requirements.txt`, and Gradle files.
+- **Security**: Operations are restricted to the project root (Path Boundary Jail). Path traversal attempts (e.g. `../` or `/etc/`) will throw a `SecurityError`.
 
 ## Commands
 

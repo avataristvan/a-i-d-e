@@ -10,6 +10,7 @@ from aide.core.context import Context
 from aide.core.infrastructure.os_file_system import OsFileSystem
 from aide.parsing.infrastructure.parsers import RegexLanguageParser, CompositeLanguageParser
 from aide.parsing.infrastructure.ast_parsers import AstPythonParser
+from aide.core.infrastructure.briefing_service import BriefingService
 from aide.plugin_system.infrastructure.plugin_loader import PluginLoader
 from aide.plugin_system.infrastructure.plugin_loader import PluginLoader
 from aide.core.infrastructure.llm_provider import HttpOpenAILlmProvider, HttpGeminiLlmProvider, ShellLlmProvider
@@ -60,7 +61,10 @@ def main():
     else:
         llm_provider = HttpOpenAILlmProvider()
     
-    context = Context(file_system=file_system, language_parser=composite_parser, llm_provider=llm_provider)
+    # Setup Briefing Service
+    briefing_service = BriefingService(file_system, composite_parser)
+    
+    context = Context(file_system=file_system, language_parser=composite_parser, llm_provider=llm_provider, briefing_service=briefing_service)
 
     # 2. Load Plugins (from features directory)
     # We now point to the new 'features' directory for capabilities

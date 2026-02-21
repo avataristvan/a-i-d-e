@@ -37,6 +37,13 @@ class OsFileSystem(FileSystemPort):
             for file in files:
                 yield os.path.abspath(os.path.join(root, file))
 
+    def path_exists(self, path: str) -> bool:
+        try:
+            safe_path = self._secure_path(path)
+            return os.path.exists(safe_path)
+        except SecurityError:
+            return False
+
     def read_file(self, file_path: str) -> str:
         safe_path = self._secure_path(file_path)
         with open(safe_path, 'r', encoding='utf-8', errors='ignore') as f:
