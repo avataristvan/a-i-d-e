@@ -8,14 +8,13 @@ class BriefingService:
     def __init__(self, file_system: FileSystemPort, language_parser: LanguageParserPort):
         self.file_system = file_system
         self.language_parser = language_parser
-
     def get_persona_rules(self) -> str:
-        """Loads persona rules hierarchical: AIDE_RULES_PATH -> workflows/use-aide-tool.md -> Default."""
+        """Loads persona rules hierarchical: AIDE_RULES_PATH -> AIDE_RULE -> Default."""
         rules_path = os.getenv("AIDE_RULES_PATH")
         if not rules_path:
-            local_path = "workflows/use-aide-tool.md"
-            if self.file_system.path_exists(local_path):
-                rules_path = local_path
+            direct_rule = os.getenv("AIDE_RULE")
+            if direct_rule:
+                return direct_rule.strip()
         
         if rules_path:
             try:

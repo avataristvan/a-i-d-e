@@ -25,8 +25,8 @@ Rules dictate *how* the agent should write code (e.g., "Use functional patterns,
 The `BriefingService` looks for instructions in the following order of precedence:
 
 1.  **Environment Variable Override:** If `AIDE_RULES_PATH` is set, it reads that file first. This allows developers to enforce personal or organizational coding standards globally across all projects.
-2.  **Project-Specific Workflows:** If no environment variable is set, it looks for `./workflows/use-aide-tool.md` in the project root. This file is intended for project-specific instructions (e.g., "In this repo, we use React Query for data fetching").
-3.  **Default Fallback:** A basic instruction to generate functional code if no specific rules are found.
+2.  **Project-Specific Rules (`.aiderc`):** If no path is set, AIDE checks for an `AIDE_RULE` environment variable. This is typically loaded automatically from the project's root `.aiderc` file, allowing project-specific instructions (e.g., "In this repo, we use React Query for data fetching") to be set in a gitignored configuration file.
+3.  **Default Fallback:** A basic instruction to "Follow the provided context and instructions strictly to generate functional code" if no specific rules are found.
 
 ### 2. Dependency Context Awareness
 

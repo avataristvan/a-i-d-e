@@ -3,17 +3,21 @@
 
 AIDE is a specialized CLI tool designed to empower AI Agents with deterministic code analysis, refactoring, code generation, and test execution capabilities across multiple languages (**Kotlin, TypeScript, JavaScript, Python, C#, Rust, Go, C++, Scala, Ruby**). While it runs in a standard terminal, its primary "users" are automated sub-agents.
 
-## Navigator's Guide (Setup for Agents)
+## Navigator's Guide (Setup for Humans)
 
-When you include this folder in a new project, follow these steps to ensure your AI collaborators can find and use it:
+AIDE provides workflow presets to help your AI collaborators find and use it. Follow these steps to set up a new project:
 
 1.  **Drop the folder**: Copy the `a-i-d-e/` directory into your project root.
-2.  **Enable Discovery**: Copy the `use-aide.md` workflow into your project's workflow directory:
+2.  **Configure `.aiderc`**: Copy the provided preset into your project root and configure your LLM settings:
+    ```bash
+    cp a-i-d-e/rule-presets/.aiderc .
+    ```
+3.  **Enable Discovery**: Copy the appropriate workflow preset into your project's `.agent` directory:
     ```bash
     mkdir -p .agent/workflows
-    cp a-i-d-e/workflows/use-aide.md .agent/workflows/
+    cp a-i-d-e/rule-presets/use-aide-host.md .agent/workflows/
     ```
-3.  **Check Permissions**: Ensure the runner is executable:
+4.  **Check Permissions**: Ensure the runner is executable:
     ```bash
     chmod +x a-i-d-e/aide.py
     ```
@@ -21,7 +25,9 @@ When you include this folder in a new project, follow these steps to ensure your
 Once these steps are complete, any AI agent interacting with your repository will automatically recognize the `a-i-d-e` capabilities via the `SKILL.md` file and follow the workflow.
 
 ### Optional: Sub-Agent Configuration
-If you wish to use AIDE's internal Sub-Agent layer to have it mechanically write logic directly into AST bounds (`aide implement-logic`), configure its LLM Provider via environment variables:
+If you wish to use AIDE's internal Sub-Agent layer to have it mechanically write logic directly into AST bounds (`aide implement-logic`), configure its LLM Provider.
+
+You can configure AIDE via environment variables or by dropping a `.aiderc` file into your project root. The `.aiderc` file is loaded automatically and is recommended for project-local configurations. You should consider adding `.aiderc` to your project's `.gitignore`.
 
 **OpenAI / Groq / LM Studio Setup:**
 ```bash
@@ -43,7 +49,7 @@ Connect AIDE to an external CLI tool or custom agent handler.
 ```
 
 **Context Awareness & Rule Centralization:**
-- **Hierarchical Rules**: Set `AIDE_RULES_PATH` in your `.env` to point to a global markdown file for your AIDE persona rules. Overrides can be placed in `./workflows/use-aide-tool.md`.
+- **Hierarchical Rules**: Set `AIDE_RULES_PATH` (absolute path) in your `.env` or `.aiderc` to point to a global markdown file. Alternatively, provide rules directly in your project's `.aiderc` via `AIDE_RULE="..."`.
 - **Dependency Awareness**: AIDE automatically scans for `package.json`, `requirements.txt`, `build.gradle`, and `libs.versions.toml` to brief sub-agents on your project's library versions.
 
 
@@ -77,7 +83,7 @@ Connect AIDE to an external CLI tool or custom agent handler.
 - **`generate-tests` & `scaffold-mocks`**: build mock topologies and output JSON scaffolding to prepare test environments.
 
 ## LLM Configuration (Sub-Agent)
-AIDE's `implement-logic` and generation features require an LLM "brain". Configure this via environment variables:
+AIDE's `implement-logic` and generation features require an LLM "brain". Configure this via environment variables or an `.aiderc` file in the root:
 1. **CLI/Recursive**: `export AIDE_LLM_COMMAND="antigravity"` (Highest precedence)
 2. **Native Gemini**: `export GEMINI_API_KEY="..."`
 3. **OpenAI/Generic**: `export AIDE_LLM_API_KEY="..."` (Optional: `AIDE_LLM_API_BASE`, `AIDE_LLM_MODEL`)
