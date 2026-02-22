@@ -1,17 +1,11 @@
-from aide.core.domain.ports import FileSystemPort, LlmProvider
-from aide.core.infrastructure.strategy_provider import StrategyProvider
-from aide.core.infrastructure.briefing_service import BriefingService
+import os
+import re
 
 class ProjectDtoUseCase:
-    def __init__(self, 
-                 file_system: FileSystemPort, 
-                 strategy_provider: StrategyProvider,
-                 llm_provider: LlmProvider,
-                 briefing_service: BriefingService):
+    def __init__(self, file_system, language_parser, strategy_provider):
         self.file_system = file_system
+        self.language_parser = language_parser
         self.strategy_provider = strategy_provider
-        self.llm_provider = llm_provider
-        self.briefing_service = briefing_service
 
     def execute(self, source_file: str, entity_name: str, target_file: str, dto_name: str, stack: str) -> bool:
         try:
@@ -19,54 +13,105 @@ class ProjectDtoUseCase:
             lines = content.splitlines()
             
             strategy = self.strategy_provider.get_strategy(source_file)
-            if not strategy:
-                return False
-                
-            # 1. Find the entity class bounds
+            
+            # Find the entity class bounds
             start, end = strategy.find_symbol_range(lines, entity_name)
             if not start:
                 return False
 
-            entity_source = "\n".join(lines[start-1:end])
+            entity_body = "\n".join(lines[start-1:end])
             
-            # 2. Get Context Briefing
-            persona_rules = self.briefing_service.get_persona_rules()
-            dependency_context = self.briefing_service.get_dependency_context(source_file)
+            # Extract fields
+            fields = self._extract_fields(entity_body, stack)
+            if not fields:
+                return False
+                
+            # Generate DTO content
+            dto_content = self._generate_dto(dto_name, fields, stack, entity_name)
             
-            # 3. LLM Generation
-            system_prompt = (
-                "You are an AIDE Sub-Agent DTO Generator.\n\n"
-                "PERSONA RULES:\n"
-                f"{persona_rules}\n\n"
-                "PROJECT CONTEXT:\n"
-                f"{dependency_context}\n\n"
-                "GOAL:\n"
-                "1. Generate a DTO (Data Transfer Object) class based on the provided source entity.\n"
-                "2. Include mapping logic (e.g., from_entity or to_dto).\n"
-                "3. Follow the idiomatic style for the requested stack/language.\n"
-                "4. Output ONLY raw code. Do NOT output markdown code blocks."
-            )
-            
-            user_prompt = (
-                f"Source Entity ({source_file}):\n"
-                f"{entity_source}\n\n"
-                f"Requested DTO Name: {dto_name}\n"
-                f"Target Stack: {stack}\n\n"
-                "Generate the DTO content:"
-            )
-
-            dto_content = self.llm_provider.generate(system_prompt, user_prompt)
-            
-            # Clean possible markdown
-            if dto_content.startswith("```"):
-                dto_lines = dto_content.splitlines()
-                if dto_lines[0].startswith("```"): dto_lines = dto_lines[1:]
-                if dto_lines and dto_lines[-1].startswith("```"): dto_lines = dto_lines[:-1]
-                dto_content = "\n".join(dto_lines)
-            
-            self.file_system.write_file(target_file, dto_content.strip() + "\n")
+            self.file_system.write_file(target_file, dto_content)
             return True
 
         except Exception as e:
             return False
 
+    def _extract_fields(self, body: str, stack: str):
+        fields = []
+        if stack == "python":
+            # Matches: id: str,   name: Optional[str] = None
+            matches = re.finditer(r'^\s*([a-zA-Z0-9_]+)\s*:\s*([^=&#\n]+)', body, re.MULTILINE)
+            for m in matches:
+                name = m.group(1).strip()
+                typ = m.group(2).strip()
+                fields.append((name, typ))
+        elif stack == "kotlin" or stack == "java":
+            # Matches: val id: String, var name: String? = null
+            matches = re.finditer(r'(?:val|var|private|public|protected)?\s*([a-zA-Z0-9_]+)\s*:\s*([^=,\n\)]+)', body)
+            for m in matches:
+                name = m.group(1).strip()
+                typ = m.group(2).strip()
+                if name not in ("class", "fun"):
+                    fields.append((name, typ))
+        else:
+            # Generic fallback: tries to find Word: Type or Word Type
+            matches = re.finditer(r'\b([a-zA-Z0-9_]+)\s*[:\s]\s*([A-Z][a-zA-Z0-9_<>\[\]]+)\b', body)
+            for m in matches:
+                name = m.group(1).strip()
+                typ = m.group(2).strip()
+                if name.lower() not in ("class", "struct", "interface", "fun", "function", "def", "public", "private"):
+                    fields.append((name, typ))
+            
+        return fields
+
+    def _generate_dto(self, dto_name: str, fields: list, stack: str, entity_name: str) -> str:
+        if stack == "python":
+            lines = [
+                "from dataclasses import dataclass",
+                "",
+                "@dataclass",
+                f"class {dto_name}:"
+            ]
+            for name, typ in fields:
+                lines.append(f"    {name}: {typ}")
+                
+            lines.append("")
+            lines.append("    @classmethod")
+            lines.append(f"    def from_entity(cls, entity):")
+            lines.append(f"        return cls(")
+            for i, (name, _) in enumerate(fields):
+                comma = "," if i < len(fields) - 1 else ""
+                lines.append(f"            {name}=entity.{name}{comma}")
+            lines.append(f"        )")
+            
+            return "\n".join(lines) + "\n"
+            
+        elif stack == "kotlin" or stack == "java":
+            lines = [
+                f"data class {dto_name}("
+            ]
+            for i, (name, typ) in enumerate(fields):
+                comma = "," if i < len(fields) - 1 else ""
+                lines.append(f"    val {name}: {typ}{comma}")
+            lines.append(")")
+            lines.append("")
+            
+            lines.append(f"fun {entity_name}.to{dto_name}() = {dto_name}(")
+            for i, (name, _) in enumerate(fields):
+                comma = "," if i < len(fields) - 1 else ""
+                lines.append(f"    {name} = this.{name}{comma}")
+            lines.append(")")
+            
+            return "\n".join(lines) + "\n"
+            
+        else:
+            # Generic fallback
+            lines = [
+                f"// DTO: {dto_name}"
+            ]
+            for name, typ in fields:
+                lines.append(f"// {name}: {typ}")
+            lines.append("")
+            lines.append(f"// TODO: Implement {dto_name} mapping for {entity_name}")
+            return "\n".join(lines) + "\n"
+        
+        return ""

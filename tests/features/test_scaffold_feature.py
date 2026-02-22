@@ -1,39 +1,55 @@
 import pytest
+import os
 from aide.features.code_generation.application.scaffold_feature import ScaffoldFeatureUseCase
 
 class MockFileSystem:
-    def __init__(self, contents=None): self.contents = contents or {}
-    def write_file(self, path, content): self.contents[path] = content
-    def path_exists(self, path): return path in self.contents
-    def read_file(self, path): return self.contents[path]
-
-class MockLlmProvider:
-    def __init__(self, response): self.response = response
-    def generate(self, system, user): return self.response
-
-class MockBriefingService:
-    def get_persona_rules(self): return "Rules"
-    def get_dependency_context(self, path=None): return "Deps"
+    def __init__(self):
+        self.files = {}
+        
+    def write_file(self, path, content):
+        self.files[path] = content
 
 def test_scaffold_feature_python():
     fs = MockFileSystem()
-    llm = MockLlmProvider('{"domain/entity.py": "class Entity: pass"}')
-    briefing = MockBriefingService()
+    use_case = ScaffoldFeatureUseCase(fs)
     
-    use_case = ScaffoldFeatureUseCase(fs, llm, briefing)
-    success = use_case.execute("Auth", "python", "./src")
+    success = use_case.execute("UserProfile", "python", "/fake/src")
     
     assert success is True
-    # The output path is constructed using os.path.join(output_dir, feature_slug, rel_path)
-    assert "./src/auth/domain/entity.py" in fs.contents
+    assert "/fake/src/userprofile/domain/__init__.py" in fs.files
+    assert "/fake/src/userprofile/application/__init__.py" in fs.files
+    assert "/fake/src/userprofile/infrastructure/__init__.py" in fs.files
+    
+    assert "class UserprofileEntity:" in fs.files["/fake/src/userprofile/domain/entity.py"]
+    assert "class GetUserprofileUseCase:" in fs.files["/fake/src/userprofile/application/use_cases.py"]
+    assert "class UserprofileRepositoryImpl:" in fs.files["/fake/src/userprofile/infrastructure/repository.py"]
 
 def test_scaffold_feature_kotlin():
     fs = MockFileSystem()
-    llm = MockLlmProvider('{"domain/Entity.kt": "class Entity"}')
-    briefing = MockBriefingService()
+    use_case = ScaffoldFeatureUseCase(fs)
     
-    use_case = ScaffoldFeatureUseCase(fs, llm, briefing)
-    success = use_case.execute("Auth", "kotlin", "./src")
+    success = use_case.execute("user-profile", "kotlin", "/fake/src")
     
     assert success is True
-    assert "./src/auth/domain/Entity.kt" in fs.contents
+    
+    domain_file = "/fake/src/user_profile/domain/UserProfileEntity.kt"
+    assert domain_file in fs.files
+    assert "data class UserProfileEntity" in fs.files[domain_file]
+    
+    app_file = "/fake/src/user_profile/application/GetUserProfileUseCase.kt"
+    assert app_file in fs.files
+    assert "class GetUserProfileUseCase" in fs.files[app_file]
+    
+    infra_file = "/fake/src/user_profile/infrastructure/UserProfileRepositoryImpl.kt"
+    assert infra_file in fs.files
+    assert "class UserProfileRepositoryImpl" in fs.files[infra_file]
+
+def test_scaffold_feature_generic_fallback():
+    fs = MockFileSystem()
+    use_case = ScaffoldFeatureUseCase(fs)
+    
+    success = use_case.execute("UserProfile", "ruby", "/fake/src")
+    
+    assert success is True
+    assert len(fs.files) > 0
+    assert "/fake/src/userprofile/domain/UserprofileEntity.rb" in fs.files

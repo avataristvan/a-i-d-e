@@ -35,11 +35,7 @@ class CodeGenerationPlugin:
         proj_parser.set_defaults(func=lambda args: self.run_project(args, context))
 
     def run_scaffold(self, args, context: Context):
-        use_case = ScaffoldFeatureUseCase(
-            context.file_system,
-            context.llm_provider,
-            context.briefing_service
-        )
+        use_case = ScaffoldFeatureUseCase(context.file_system)
         success = use_case.execute(args.name, args.stack, args.output_dir)
         
         slug = args.name.lower().replace(" ", "_").replace("-", "_")
@@ -57,10 +53,9 @@ class CodeGenerationPlugin:
             
     def run_implement(self, args, context: Context):
         use_case = ImplementInterfaceUseCase(
-            file_system=context.file_system,
-            strategy_provider=context.strategy_provider,
-            llm_provider=context.llm_provider,
-            briefing_service=context.briefing_service
+            context.file_system,
+            context.language_parser,
+            context.strategy_provider
         )
         
         success = use_case.execute(args.file, args.class_name, args.implements)
@@ -78,10 +73,9 @@ class CodeGenerationPlugin:
 
     def run_register(self, args, context: Context):
         use_case = RegisterDependencyUseCase(
-            file_system=context.file_system,
-            strategy_provider=context.strategy_provider,
-            llm_provider=context.llm_provider,
-            briefing_service=context.briefing_service
+            context.file_system,
+            context.language_parser,
+            context.strategy_provider
         )
         
         success = use_case.execute(args.file, args.import_path, args.binding)
@@ -99,10 +93,9 @@ class CodeGenerationPlugin:
 
     def run_project(self, args, context: Context):
         use_case = ProjectDtoUseCase(
-            file_system=context.file_system,
-            strategy_provider=context.strategy_provider,
-            llm_provider=context.llm_provider,
-            briefing_service=context.briefing_service
+            context.file_system,
+            context.language_parser,
+            context.strategy_provider
         )
         
         success = use_case.execute(args.source_file, args.entity, args.target_file, args.dto, args.stack)

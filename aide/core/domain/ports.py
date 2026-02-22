@@ -47,12 +47,6 @@ class FileSystemPort(ABC):
         """Reverts all file system changes made since the transaction started."""
         pass
 
-class LlmProvider(ABC):
-    @abstractmethod
-    def generate(self, system_prompt: str, user_prompt: str) -> str:
-        """Sends a prompt to the LLM and returns the raw string response."""
-        pass
-
 class LanguageStrategy(ABC):
     @abstractmethod
     def extract_imports_and_header(self, lines: List[str]) -> Tuple[List[str], Optional[str]]:

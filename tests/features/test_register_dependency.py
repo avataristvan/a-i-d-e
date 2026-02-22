@@ -5,43 +5,49 @@ class MockFileSystem:
     def __init__(self, contents): self.contents = contents
     def read_file(self, path): return self.contents[path]
     def write_file(self, path, content): self.contents[path] = content
-    def path_exists(self, path): return path in self.contents
 
-class MockLlmProvider:
-    def __init__(self, response): self.response = response
-    def generate(self, system, user): return self.response
-
-class MockBriefingService:
-    def get_persona_rules(self): return "Rules"
-    def get_dependency_context(self, path=None): return "Deps"
+class MockParser: pass
+class MockStrategyProvider: pass
 
 def test_register_dependency_kotlin():
-    initial = "package com.example\n\nval module = module {\n}\n"
-    # Mock LLM returns the whole file as instructed in the UseCase
-    expected = "package com.example\n\nimport com.example.Service\n\nval module = module {\n    single { Service() }\n}\n"
+    initial = (
+        "package com.example.di\n"
+        "\n"
+        "import org.koin.dsl.module\n"
+        "import com.example.ExistingService\n"
+        "\n"
+        "val appModule = module {\n"
+        "    single<ExistingService> { ExistingServiceImpl() }\n"
+        "}\n"
+    )
     
     fs = MockFileSystem({"temp.kt": initial})
-    llm = MockLlmProvider(expected)
-    briefing = MockBriefingService()
+    use_case = RegisterDependencyUseCase(fs, MockParser(), MockStrategyProvider())
     
-    use_case = RegisterDependencyUseCase(fs, None, llm, briefing)
-    success = use_case.execute("temp.kt", "com.example.Service", "single { Service() }")
+    success = use_case.execute("temp.kt", "com.example.NewService", "single<NewService> { NewServiceImpl() }")
     
     assert success is True
-    assert "import com.example.Service" in fs.contents["temp.kt"]
-    assert "single { Service() }" in fs.contents["temp.kt"]
+    content = fs.contents["temp.kt"]
+    assert "import com.example.NewService" in content
+    # Ensure it's inside the module block (before the last brace)
+    assert "    single<NewService> { NewServiceImpl() }" in content
+    assert content.endswith("}\n")
 
 def test_register_dependency_python():
-    initial = "di = DI()\n"
-    expected = "import Service\ndi = DI()\ndi.register(Service)\n"
+    initial = (
+        "from container import DI\n"
+        "from services import OldService\n"
+        "\n"
+        "di = DI()\n"
+        "di.register(OldService)\n"
+    )
     
     fs = MockFileSystem({"temp.py": initial})
-    llm = MockLlmProvider(expected)
-    briefing = MockBriefingService()
+    use_case = RegisterDependencyUseCase(fs, MockParser(), MockStrategyProvider())
     
-    use_case = RegisterDependencyUseCase(fs, None, llm, briefing)
-    success = use_case.execute("temp.py", "import Service", "di.register(Service)")
+    success = use_case.execute("temp.py", "from services import NewService", "di.register(NewService)")
     
     assert success is True
-    assert "import Service" in fs.contents["temp.py"]
-    assert "di.register(Service)" in fs.contents["temp.py"]
+    content = fs.contents["temp.py"]
+    assert "from services import NewService" in content
+    assert "di.register(NewService)" in content

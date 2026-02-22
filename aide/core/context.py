@@ -1,9 +1,7 @@
 from typing import Type, TypeVar, Dict, Any, Optional
-from aide.core.domain.ports import FileSystemPort, LlmProvider
+from aide.core.domain.ports import FileSystemPort
 from aide.parsing.domain.ports import LanguageParserPort
 from aide.core.infrastructure.strategy_provider import StrategyProvider
-from aide.core.infrastructure.briefing_service import BriefingService
-
 T = TypeVar('T')
 
 class Context:
@@ -12,9 +10,7 @@ class Context:
     def __init__(self, 
                  file_system: Optional[FileSystemPort] = None, 
                  language_parser: Optional[LanguageParserPort] = None,
-                 strategy_provider: Optional[StrategyProvider] = None,
-                 llm_provider: Optional[LlmProvider] = None,
-                 briefing_service: Optional[BriefingService] = None):
+                 strategy_provider: Optional[StrategyProvider] = None):
         
         self._services: Dict[Type, Any] = {}
         
@@ -27,10 +23,6 @@ class Context:
              self.register(StrategyProvider, strategy_provider)
         else:
              self.register(StrategyProvider, StrategyProvider())
-        if llm_provider:
-             self.register(LlmProvider, llm_provider)
-        if briefing_service:
-             self.register(BriefingService, briefing_service)
              
     def register(self, interface: Type[T], implementation: T) -> None:
         """Register a dependency with the DI Container."""
@@ -57,11 +49,3 @@ class Context:
     @property
     def strategy_provider(self) -> StrategyProvider:
         return self.resolve(StrategyProvider)
-
-    @property
-    def llm_provider(self) -> LlmProvider:
-        return self.resolve(LlmProvider)
-
-    @property
-    def briefing_service(self) -> BriefingService:
-        return self.resolve(BriefingService)

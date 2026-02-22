@@ -9,9 +9,7 @@ binary: ./a-i-d-e/aide.py
 CLI tool for deterministic file operations & refactoring.
 Supported Languages: **Kotlin, TypeScript, JavaScript, Python, C#, Rust, Go, C++, Scala, Ruby**.
 
-- **.env Persistence**: AIDE automatically loads `.env` from the project root. This can be used to store `GEMINI_API_KEY`, `AIDE_LLM_API_KEY`, or `AIDE_LLM_COMMAND`.
-- **Rule Centralization**: Set `AIDE_RULES_PATH` for global persona rules.
-- **Dependency Context**: AIDE automatically briefs sub-agents on library versions from `package.json`, `requirements.txt`, and Gradle files.
+
 - **Security**: Operations are restricted to the project root (Path Boundary Jail). Path traversal attempts (e.g. `../` or `/etc/`) will throw a `SecurityError`.
 
 ## Commands
@@ -109,7 +107,7 @@ Refactor: Rename symbol project-wide with regex-safe whole-word matching.
   - `--root`: Project root
 - **Invoke**: `./a-i-d-e/aide.py rename-symbol <old> <new> [--root <p>] [-n]`
 
-## Agentic Code Generation & Testing Tools
+## Deterministic Code Generation & Testing Tools
 
 ### `generate-tests`
 Test Generation: Scaffold context payload for test generation.
@@ -141,10 +139,7 @@ Code Generation: Deterministically generate a DTO and mapping function from a Do
 - **Args**: `--source-file` (path), `--entity` (ClassName), `--target-file` (path), `--dto` (DTOName), `--stack` (kotlin|python)
 - **Invoke**: `./a-i-d-e/aide.py project-dto --source-file <path> --entity <Entity> --target-file <path> --dto <DTO> --stack <stack>`
 
-### `implement-logic`
-Code Generation: Spawn a Sub-Agent to write deterministic logic inside a function boundary.
-- **Args**: `--target` (File::Symbol format), `--prompt` (intent), `--verify` (optional rollback test loop)
-- **Invoke**: `./a-i-d-e/aide.py implement-logic --target <file::symbol> --prompt <intent> [--verify] [-n]`
+
 
 ## Agentic Test Execution Tools
 
