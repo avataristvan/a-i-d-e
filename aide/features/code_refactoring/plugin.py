@@ -63,6 +63,94 @@ class RefactorPlugin:
         ext_int_parser.add_argument("--verify", action="store_true", help="Automatically run tests and revert changes if they fail")
         ext_int_parser.set_defaults(func=lambda args: self.handle_extract_interface(args, context))
 
+        # aide refactor update-references
+        upd_ref_parser = subparsers.add_parser("update-references", help="Update all project references (imports/XML) from an old FQDN to a new FQDN")
+        upd_ref_parser.add_argument("old_fqdn", help="Old fully qualified name (e.g. com.example.old.MyClass)")
+        upd_ref_parser.add_argument("new_fqdn", help="New fully qualified name (e.g. com.example.new.MyClass)")
+        upd_ref_parser.add_argument("--root", default=".", help="Project root")
+        upd_ref_parser.add_argument("--dry-run", "-n", action="store_true", help="Preview changes without writing to files")
+        upd_ref_parser.add_argument("--verify", action="store_true", help="Automatically run tests and revert changes if they fail")
+        upd_ref_parser.set_defaults(func=lambda args: self.handle_update_references(args, context))
+
+        # aide refactor move-file
+        mv_file_parser = subparsers.add_parser("move-file", help="Move one or more files and update their internal packages and project-wide references")
+        mv_file_parser.add_argument("source", help="Comma-separated list of source file paths")
+        mv_file_parser.add_argument("dest_dir", help="Destination directory path")
+        mv_file_parser.add_argument("--src-root", default="app/src/main/java", help="Source root directory for JVM package inference")
+        mv_file_parser.add_argument("--root", default=".", help="Project root")
+        mv_file_parser.add_argument("--dry-run", "-n", action="store_true", help="Preview changes without writing to files")
+        mv_file_parser.add_argument("--verify", action="store_true", help="Automatically run tests and revert changes if they fail")
+        mv_file_parser.set_defaults(func=lambda args: self.handle_move_file(args, context))
+
+    def handle_move_file(self, args, context: Context):
+        from aide.features.code_refactoring.application.move_file import MoveFileUseCase
+        
+        reverted = False
+        if getattr(args, "verify", False): context.file_system.start_transaction()
+        
+        sources = [s.strip() for s in args.source.split(',')]
+        use_case = MoveFileUseCase(context.file_system, context.strategy_provider)
+        res = use_case.execute(sources, args.dest_dir, args.root, args.src_root, dry_run=args.dry_run)
+        
+        if res.success and getattr(args, "verify", False) and not args.dry_run:
+            from aide.features.testing_execution.application.execute_tests import ExecuteTestsUseCase
+            test_use_case = ExecuteTestsUseCase(context.file_system)
+            test_res = test_use_case.execute(args.root)
+            if not test_res.get("success", False):
+                context.file_system.rollback()
+                res.success = False
+                res.message = "Tests failed. Changes reverted."
+                reverted = True
+            else:
+                context.file_system.commit()
+        
+        result = {
+            "success": res.success,
+            "message": "Preview (No changes made)" if args.dry_run and res.success else "Success" if res.success else res.message,
+            "data": {
+                "files_moved": res.files_changed,
+                "total_replacements": res.total_replacements,
+                "sources": sources,
+                "dest_dir": args.dest_dir,
+                "reverted": reverted
+            }
+        }
+        print(json.dumps(result, indent=2))
+
+    def handle_update_references(self, args, context: Context):
+        from aide.features.code_refactoring.application.update_refs import UpdateReferencesUseCase
+        
+        reverted = False
+        if getattr(args, "verify", False): context.file_system.start_transaction()
+        
+        use_case = UpdateReferencesUseCase(context.file_system)
+        res = use_case.execute(args.root, args.old_fqdn, args.new_fqdn, dry_run=args.dry_run)
+        
+        if res.success and getattr(args, "verify", False) and not args.dry_run:
+            from aide.features.testing_execution.application.execute_tests import ExecuteTestsUseCase
+            test_use_case = ExecuteTestsUseCase(context.file_system)
+            test_res = test_use_case.execute(args.root)
+            if not test_res.get("success", False):
+                context.file_system.rollback()
+                res.success = False
+                res.message = "Tests failed. Changes reverted."
+                reverted = True
+            else:
+                context.file_system.commit()
+        
+        result = {
+            "success": res.success,
+            "message": "Preview (No changes made)" if args.dry_run and res.success else "Success" if res.success else res.message,
+            "data": {
+                "files_changed": res.files_changed,
+                "total_replacements": res.total_replacements,
+                "old_fqdn": args.old_fqdn,
+                "new_fqdn": args.new_fqdn,
+                "reverted": reverted
+            }
+        }
+        print(json.dumps(result, indent=2))
+
     def handle_extract_interface(self, args, context: Context):
         from aide.features.code_refactoring.application.extract_interface import ExtractInterfaceUseCase
         
@@ -159,6 +247,8 @@ class RefactorPlugin:
         try:
             if not args.dry_run:
                 context.file_system.move_path(src_path, dest_path)
+                # Cleanup old empty parent folders up to src-root
+                context.file_system.delete_empty_parents(src_path, src_root)
         except Exception as e:
              if getattr(args, "verify", False): context.file_system.rollback()
              print(json.dumps({"success": False, "error": f"Failed to move files: {e}"}))

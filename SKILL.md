@@ -90,14 +90,28 @@ Refactor: Update function definition and call sites.
 ### `move-symbol`
 Refactor: Move top-level symbol to another file.
 - **Args**:
-  - `symbol`: Symbol name (e.g. `MyFunc`) or comma-separated list for batch move (e.g. `FuncA,FuncB,ClassC`)
+  - `symbol`: Symbol name (e.g. `MyFunc`) or comma-separated list for batch move
   - `--source`: Source file path
   - `--dest`: Destination file path
 - **Smart Features**: 
   - Automatically merges required imports into destination.
   - Updates project-wide references if the symbol moves to a different package.
 - **Invoke**: `./a-i-d-e/aide.py move-symbol <symbol> --source <src> --dest <dest> [-n]`
-*(Supports Kotlin, TS/JS, Python, C#, Rust, Go, C++, Scala, Ruby)*
+
+### `move-file`
+Refactor: Physically move file(s), auto-update internal package markers, and rewire project imports (including XML manifests/layouts).
+- **Args**:
+  - `source`: Comma-separated list of source file paths (e.g. `domain/MyClass.kt,domain/OtherClass.kt`)
+  - `dest_dir`: Target directory (e.g. `features/storage/domain`)
+  - `--src-root`: Base source folder for package inference (default: `app/src/main/java`)
+- **Invoke**: `./a-i-d-e/aide.py move-file <source> <dest_dir> [--src-root <dir>] [-n] [--verify]`
+
+### `update-references`
+Refactor/Fix: Safely replaces an old fully-qualified name with a new one across all code and XML files (useful if you manually `mv` a file outside AIDE).
+- **Args**:
+  - `old_fqdn`: e.g. `com.example.old.MyClass`
+  - `new_fqdn`: e.g. `com.example.new.MyClass`
+- **Invoke**: `./a-i-d-e/aide.py update-references <old_fqdn> <new_fqdn> [-n] [--verify]`
 
 ### `rename-symbol`
 Refactor: Rename symbol project-wide with regex-safe whole-word matching.

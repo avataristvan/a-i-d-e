@@ -11,6 +11,7 @@ from aide.core.infrastructure.os_file_system import OsFileSystem
 from aide.parsing.infrastructure.parsers import RegexLanguageParser, CompositeLanguageParser
 from aide.parsing.infrastructure.ast_parsers import AstPythonParser
 from aide.plugin_system.infrastructure.plugin_loader import PluginLoader
+
 def main():
     parser = argparse.ArgumentParser(description="a-i-d-e: The AI's IDE (Plugin Architecture)")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
@@ -25,6 +26,18 @@ def main():
     composite_parser = CompositeLanguageParser(fallback_parser)
     composite_parser.register(".py", AstPythonParser())
     
+    try:
+        from aide.parsing.infrastructure.csharp_parser import CSharpLanguageParser
+        composite_parser.register(".cs", CSharpLanguageParser())
+    except ImportError:
+        pass # Fallback to regex parser if tree-sitter C extensions fail
+
+    try:
+        from aide.parsing.infrastructure.rust_parser import RustLanguageParser
+        composite_parser.register(".rs", RustLanguageParser())
+    except ImportError:
+        pass # Fallback to regex parser if tree-sitter C extensions fail
+        
     context = Context(file_system=file_system, language_parser=composite_parser)
 
     # 2. Load Plugins (from features directory)

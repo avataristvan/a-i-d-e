@@ -156,7 +156,7 @@ class MoveSymbolUseCase:
 
     def _update_references(self, old_text: str, new_text: str, dry_run: bool, root: str = "."):
         # Scan all supported files in project
-        extensions = (".kt", ".java", ".py", ".ts", ".tsx", ".js", ".jsx")
+        extensions = (".kt", ".java", ".py", ".ts", ".tsx", ".js", ".jsx", ".xml")
         for file_path in self.file_system.walk_files(root):
             if file_path.endswith(extensions):
                 content = self.file_system.read_file(file_path)

@@ -33,6 +33,11 @@ class FileSystemPort(ABC):
         pass
 
     @abstractmethod
+    def delete_empty_parents(self, path: str, root_limit: str) -> None:
+        """Recursively deletes empty parent directories up to a limit."""
+        pass
+
+    @abstractmethod
     def start_transaction(self) -> None:
         """Starts tracking file system changes for a potential rollback."""
         pass

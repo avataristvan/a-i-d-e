@@ -4,137 +4,124 @@ from typing import List, Tuple, Optional, Set
 from aide.core.domain.ports import LanguageStrategy
 
 class CSharpLanguageStrategy(LanguageStrategy):
-    """
-    C#-specific refactoring strategy.
-    Handles imports (using), namespaces, and bracket-based block detection.
-    """
-    def extract_imports_and_header(self, lines: List[str]) -> Tuple[List[str], Optional[str]]:
-        """Extracts all 'using' statements and the 'namespace' declaration."""
+    def adjust_visibility(self, content: str) -> str:
+        # For simple code-block extraction, we don't automatically rewrite visibility in C#
+        # C# is explicit, changing `public` to `private` requires AST or complex regex
+        return content
+
+    def extract_imports_and_header(self, lines: List[str]) -> Tuple[List[str], str]:
         imports = []
-        header = None
+        header = []
         for line in lines:
             stripped = line.strip()
-            if stripped.startswith("using ") and ";" in stripped:
-                imports.append(stripped)
-            elif stripped.startswith("namespace ") and header is None:
-                header = stripped.rstrip("{;").strip()
-        return imports, header
-
-    def get_package_header(self, file_path: str) -> Optional[str]:
-        """Returns the namespace line for a new file based on its path."""
-        pkg = self._get_namespace(file_path)
-        return f"namespace {pkg}" if pkg else None
-
-    def get_module_path(self, file_path: str) -> str:
-        """Returns the C# namespace based on file path."""
-        return self._get_namespace(file_path)
-
-    def _get_namespace(self, file_path: str) -> str:
-        """Helper to infer namespace from file path."""
-        rel_path = os.path.relpath(file_path, ".")
-        parts = os.path.dirname(rel_path).split(os.sep)
-        # Filter out empty parts or '.'
-        parts = [p for p in parts if p and p != "."]
-        return ".".join(parts)
-
-    def adjust_visibility(self, content: str) -> str:
-        """C# visibility adjustment (e.g. ensuring internal/public)."""
-        # Very simple heuristic: if it starts with private, make it internal or leave as is?
-        # Standard approach in these strategies seems to be removing 'private'
-        return re.sub(r'\bprivate\s+(class|interface|struct|enum|delegate|void|int|string|bool)\b', r'internal \1', content)
+            if stripped.startswith("using ") and not stripped.startswith("using ("):
+                # Captures `using System;` but ignores `using (var x = ...)`
+                imports.append(line)
+            elif stripped.startswith("namespace "):
+                header.append(line)
+            elif stripped.startswith(("class", "record", "struct", "interface", "enum", "public", "private", "internal", "protected")):
+                break # We hit the body of the file
+        
+        return imports, "\n".join(header)
 
     def find_symbol_range(self, lines: List[str], symbol: str) -> Tuple[Optional[int], Optional[int]]:
-        """Finds the start and end lines of a class, method, or interface using bracket matching."""
-        # Pattern for class, interface, struct, enum or method definitions
-        # Matches: [visibility] [modifiers] [type] SymbolName [inheritance/constraints]
-        pattern = re.compile(rf"\b(class|interface|struct|enum|void|[\w<>[\]]+)\s+{re.escape(symbol)}\b")
+        """
+        Extremely naive brace counting to find a symbol block.
+        Real AST-based splicing belongs in a future `AstSplicer` port.
+        For now, this maintains compatibility with the legacy `RegexLanguageParser` splicing mechanism.
+        """
+        start_line = None
+        end_line = None
+        brace_count = 0
+        in_symbol = False
         
-        start_line = -1
+        # We need a robust regex to find the start
+        pattern = re.compile(rf"\b(?:class|struct|interface|record|enum)\s+{re.escape(symbol)}\b|\b(?:[a-zA-Z0-9_<>\[\]]+\s+){re.escape(symbol)}\s*\(")
+
         for i, line in enumerate(lines):
-            if pattern.search(line):
-                # Ensure it's not a call (simple check: no ';' right after if it's a method-like thing)
-                # But for class/interface it's safer.
-                # In C#, methods usually have '(' after Name.
-                if "(" in line and ";" in line and not "{" in line:
-                    # Likely a call or abstract/interface method declaration without body if in interface
-                    # For now, let's assume definitions have '{' on same or next line.
-                    pass
-                
-                start_line = i + 1
-                break
-        
-        if start_line == -1:
-            return None, None
-
-        # Include attributes/comments above
-        curr = start_line - 1
-        while curr > 0:
-            prev_line = lines[curr - 1].strip()
-            if prev_line.startswith("[") or prev_line.startswith("//") or prev_line.startswith("/*") or prev_line.startswith("*") or prev_line == "":
-                start_line = curr
-                curr -= 1
+            if not in_symbol:
+                if pattern.search(line):
+                    # We might have attributes above the class/method e.g. [Route("api/[controller]")]
+                    # We backtrack to find attributes
+                    start_line_idx = i
+                    while start_line_idx > 0 and lines[start_line_idx - 1].strip().startswith("["):
+                        start_line_idx -= 1
+                    
+                    start_line = start_line_idx + 1
+                    in_symbol = True
+                    brace_count += line.count('{') - line.count('}')
+                    
+                    # It might be a one-liner without braces (e.g. abstract method or auto-property)
+                    if line.strip().endswith(';'):
+                        end_line = i + 1
+                        break
             else:
-                break
-
-        balance = 0
-        found_open = False
-        end_line = -1
+                brace_count += line.count('{') - line.count('}')
+                if brace_count <= 0 and ('{' in line or '}' in line or brace_count < 0):
+                    end_line = i + 1
+                    break
         
-        for i in range(start_line - 1, len(lines)):
-            line = lines[i]
-            # Simple bracket counting
-            for char in line:
-                if char == '{':
-                    balance += 1
-                    found_open = True
-                elif char == '}':
-                    balance -= 1
-            
-            if found_open and balance == 0:
-                end_line = i + 1
-                break
-        
-        # Handle file-scoped namespaces if the symbol is the namespace itself? 
-        # Usually we look for classes/methods.
-        
-        if end_line == -1:
-             return None, None
-             
         return start_line, end_line
 
-    def get_import_statement(self, package: str, symbol: str) -> str:
-        # package here is expected to be the namespace
-        pkg_name = package.replace("namespace ", "").strip()
-        return f"using {pkg_name};"
+    def get_module_path(self, file_path: str) -> str:
+        """
+        Extract the namespace from the file if possible, otherwise guess from directory structure.
+        In C#, package structure isn't strictly tied to directory path like Java.
+        """
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            match = re.search(r'^\s*namespace\s+([\w\.]+)', content, re.MULTILINE)
+            if match:
+                return match.group(1)
+        except Exception:
+            pass
+            
+        # Fallback to directory structure guessing
+        base_dir = os.path.dirname(file_path)
+        return  os.path.basename(base_dir) # Very simplistic fallback
+
+    def get_import_statement(self, module_path: str, symbol: str) -> str:
+        """
+        Returns the C# using statement. C# imports namespaces, not individual symbols.
+        """
+        return f"using {module_path};"
+
+    def get_package_header(self, file_path: str) -> Optional[str]:
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                content = f.read()
+            # File-scoped namespaces (C# 10) or traditional
+            match = re.search(r'^\s*namespace\s+([\w\.]+)\s*;?', content, re.MULTILINE)
+            if match:
+                 return match.group(0).strip()
+        except:
+            pass
+        return None
 
     def find_variables(self, text: str) -> Set[str]:
-        keywords = {
-            "abstract", "as", "base", "bool", "break", "byte", "case", "catch", "char", "checked", "class", "const", "continue", "decimal", "default", "delegate", "do", "double", "else", "enum", "event", "explicit", "extern", "false", "finally", "fixed", "float", "for", "foreach", "goto", "if", "implicit", "in", "int", "interface", "internal", "is", "lock", "long", "namespace", "new", "null", "object", "operator", "out", "override", "params", "private", "protected", "public", "readonly", "ref", "return", "sbyte", "sealed", "short", "sizeof", "stackalloc", "static", "string", "struct", "switch", "this", "throw", "true", "try", "typeof", "uint", "ulong", "unchecked", "unsafe", "ushort", "using", "virtual", "void", "volatile", "while", "var", "async", "await", "get", "set"
-        }
-        # C# allows @ prefix for identifiers
+        # C# keywords
+        keywords = {"var", "int", "string", "bool", "double", "float", "long", "byte", "char", "decimal", "object", "dynamic", "if", "else", "for", "foreach", "while", "return", "new", "this", "base", "true", "false", "null", "class", "struct", "interface", "enum", "namespace", "using", "public", "private", "protected", "internal", "static", "readonly", "volatile", "const", "async", "await", "yield", "params", "ref", "out", "in"}
         matches = re.findall(r'\b[a-z_][a-zA-Z0-9_]*\b', text)
         return set([m for m in matches if m not in keywords])
 
     def is_defined_in_outer_scope(self, var_name: str, context_text: str) -> bool:
-        # Check for assignment or declaration: Type var = ... or var var = ...
-        patterns = [
-            rf"\b(var|[\w<>[\]]+)\s+{var_name}\s*[=;]", 
-            rf"\b{var_name}\s*="
-        ]
+        patterns = [rf"\b(?:var|int|string|bool|double|float|long|byte|char|decimal|object|dynamic|\w+)\s+{var_name}\b", rf"\b{var_name}\s*="]
         return any(re.search(p, context_text) for p in patterns)
 
     def infer_types(self, parameters: List[str], context_text: str) -> List[Tuple[str, str]]:
         typed = []
         for var in parameters:
-            # Match "Type var" or "var var = (Type)..."
-            match = re.search(rf"\b([\w<>[\]]+)\s+{var}\b", context_text)
-            type_name = match.group(1) if match and match.group(1) != "var" else "object"
-            typed.append((var, type_name))
+            # Match "Type var" or "Type var ="
+            match = re.search(rf"\b([\w<>, \[\]]+)\s+{var}\b", context_text)
+            typed.append((var, match.group(1) if match else "object"))
         return typed
 
     def get_function_template(self, name: str, params_str: str, body: List[str], scope: str, indent: str) -> str:
-        visibility = scope if scope else "public"
-        code = f"\n\n{indent}{visibility} void {name}({params_str})\n{indent}{{\n"
+        # Map scope to C# access modifiers
+        modifier = "private" if scope == "private" else "public"
+        # We assume `void` for now as type inference is limited
+        code = f"\n\n{indent}{modifier} void {name}({params_str}) {{\n"
         for line in body:
             code += line + "\n"
         code += f"{indent}}}\n"
@@ -144,8 +131,7 @@ class CSharpLanguageStrategy(LanguageStrategy):
         return f"{indent}{name}({args_str});"
 
     def is_definition(self, line: str, symbol: str) -> bool:
-        # Simple check for method or class definition
-        return re.search(rf"\b(class|interface|void|[\w<>[\]]+)\s+{symbol}\s*\(?", line) is not None
+        return f" {symbol}(" in line and ("void" in line or "class" in line or "int" in line or "string" in line)
 
     def update_signature_string(self, line: str, symbol: str, is_definition: bool, insertion: str) -> str:
         match = re.search(rf"\b{re.escape(symbol)}\s*\(", line)

@@ -12,7 +12,11 @@ license = {file = "LICENSE"}
 authors = [
   {name = "AIDE Contributors"}
 ]
-dependencies = []
+dependencies = [
+  "tree-sitter>=0.22.0",
+  "tree-sitter-c-sharp>=0.21.0",
+  "tree-sitter-rust>=0.21.0"
+]
 
 [project.optional-dependencies]
 dev = [

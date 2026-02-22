@@ -93,7 +93,17 @@ class OsFileSystem(FileSystemPort):
             
         # Ensure destination parent directory exists
         os.makedirs(parent, exist_ok=True)
-        shutil.move(safe_src, safe_dst)
+        
+        # If destination exists and is a directory, and source is a directory,
+        # shutil.move(src, dst) will move src INTO dst (nesting).
+        # We want to RENAME/MOVE TO dst, not into it.
+        if os.path.isdir(safe_src) and os.path.exists(safe_dst) and os.path.isdir(safe_dst):
+             # If destination exists, we merge contents
+             for item in os.listdir(safe_src):
+                 self.move_path(os.path.join(safe_src, item), os.path.join(safe_dst, item))
+             os.rmdir(safe_src)
+        else:
+             shutil.move(safe_src, safe_dst)
 
     def delete_path(self, path: str) -> None:
         safe_path = self._secure_path(path)
@@ -112,6 +122,18 @@ class OsFileSystem(FileSystemPort):
             os.remove(safe_path)
         elif os.path.isdir(safe_path):
             shutil.rmtree(safe_path)
+
+    def delete_empty_parents(self, path: str, root_limit: str) -> None:
+        safe_path = self._secure_path(path)
+        safe_limit = self._secure_path(root_limit)
+        
+        current = os.path.dirname(safe_path)
+        while current.startswith(safe_limit) and current != safe_limit:
+            if os.path.exists(current) and os.path.isdir(current) and not os.listdir(current):
+                os.rmdir(current)
+                current = os.path.dirname(current)
+            else:
+                break
 
     def start_transaction(self) -> None:
         self._in_transaction = True
