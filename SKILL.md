@@ -11,6 +11,7 @@ Supported Languages: **Kotlin, TypeScript, JavaScript, Python, C#, Rust, Go, C++
 
 
 - **Security**: Operations are restricted to the project root (Path Boundary Jail). Path traversal attempts (e.g. `../` or `/etc/`) will throw a `SecurityError`.
+- **Parsing Precision**: AIDE uses **AST-based parsing** (Tree-Sitter) for **C# and Rust** to ensure 100% accuracy in symbol extraction and refactoring. Other languages use a high-precision regex fallback.
 
 ## Commands
 
@@ -35,14 +36,11 @@ Architecture validation.
 - **Args**: `--stack {kotlin,nextjs}`, `--src <dir>`
 - **Invoke**: `./a-i-d-e/aide.py audit --stack <stack> [--src <path>]`
 
-### `move-package`
-Refactor: Move package + Update references.
-- **Args**: 
-  - `src`: Rel path from java-root (e.g. `domain/macro`)
-  - `dest_package`: Target FQDN (e.g. `com.avataristvan.ExoDeck.features.macro.domain`)
-  - `--root <dir>` (default: .)
-  - `--java-root <dir>` (default: `app/src/main/java/com/avataristvan/ExoDeck`)
-- **Invoke**: `./a-i-d-e/aide.py move-package <src> <dest_package> [--root <p>] [--java-root <p>] [-n]`
+- **Smart Features**: 
+  - **Ghost Cleanup**: Automatically deletes empty parent directories after moving packages.
+  - **Android/Gradle**: Automatically updates the `namespace` property in `build.gradle.kts`.
+  - **Verification**: Use `--verify` to auto-rollback if the build fails after a move.
+- **Invoke**: `./a-i-d-e/aide.py move-package <src> <dest_package> [--root <p>] [--java-root <p>] [-n] [--verify]`
 
 ### `extract`
 Refactor: Extract code block to function.
@@ -106,11 +104,7 @@ Refactor: Physically move file(s), auto-update internal package markers, and rew
   - `--src-root`: Base source folder for package inference (default: `app/src/main/java`)
 - **Invoke**: `./a-i-d-e/aide.py move-file <source> <dest_dir> [--src-root <dir>] [-n] [--verify]`
 
-### `update-references`
-Refactor/Fix: Safely replaces an old fully-qualified name with a new one across all code and XML files (useful if you manually `mv` a file outside AIDE).
-- **Args**:
-  - `old_fqdn`: e.g. `com.example.old.MyClass`
-  - `new_fqdn`: e.g. `com.example.new.MyClass`
+- **Supported Files**: `.kt, .java, .xml, .gradle.kts, .gradle, .py, .ts, .tsx, .js, .jsx, .cs, .rs, .go, .c, .cpp, .cc, .h, .hpp, .scala, .rb`
 - **Invoke**: `./a-i-d-e/aide.py update-references <old_fqdn> <new_fqdn> [-n] [--verify]`
 
 ### `rename-symbol`
