@@ -2,6 +2,15 @@
 
 Thank you for your interest in contributing to **AIDE (Agent Interface for Deterministic Editing)**!
 
+## Finding Features and Issues
+AIDE is built from an agent for agents. The highest goal for an agent is to solve te Navigators problem.
+So the Navigator does not necessarily recognize, if aide fails or lacks a feature, to solve a problem in a deterministic way.
+
+Simply ask your agent for its observations.
+```
+Could you use aide in Your last task? Did You observe an unexpected result or did you miss a functionality?
+```
+
 ## Architecture Guidelines
 
 AIDE is separated into a core execution environment and a modular plugin framework:
