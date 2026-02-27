@@ -3,27 +3,28 @@
 
 AIDE is a specialized CLI tool designed to empower AI Agents with deterministic code analysis, refactoring, code generation, and test execution capabilities across multiple languages (**Kotlin, TypeScript, JavaScript, Python, C#, Rust, Go, C++, Scala, Ruby**). While it runs in a standard terminal, its primary "users" are automated sub-agents.
 
-## Navigator's Guide (Setup for Humans)
+## Navigator's Guide (Quick Setup)
 
-AIDE provides workflow presets to help your AI collaborators find and use it. Follow these steps to set up a new project:
+AIDE is designed for zero-friction integration. Follow the **3-Step Setup** to empower your project:
 
-1.  **Drop the folder**: Copy the `a-i-d-e/` directory into your project root.
-
-2.  **Enable Discovery**: Copy the appropriate workflow preset into your project's `.agent` directory:
-    ```bash
-    mkdir -p .agent/workflows
-    cp a-i-d-e/rule-presets/use-aide-host.md .agent/workflows/
-    ```
-3.  **Check Permissions**: Ensure the runner is executable:
+1.  **Drop the folder**: Clone or copy the `a-i-d-e/` directory into your project root.
+2.  **Authorize**: Ensure the engine is executable:
     ```bash
     chmod +x a-i-d-e/aide.py
     ```
+3.  **Instruct**: Activate the **Orchestrator** by copying the preset:
+    ```bash
+    mkdir -p .agent/rules
+    cp a-i-d-e/rule-presets/use-aide-host.md .agent/rules/
+    ```
 
-Once these steps are complete, any AI agent interacting with your repository will automatically recognize the `a-i-d-e` capabilities via the `SKILL.md` file and follow the workflow.
+### Verify Installation
+Run the health check to ensure everything is ready:
+```bash
+python3 a-i-d-e/check-aide.py
+```
 
-
-
-
+Once complete, any AI agent interacting with your repository will recognize the `a-i-d-e` capabilities via the `SKILL.md` file.
 
 ## Core Capabilities
 
