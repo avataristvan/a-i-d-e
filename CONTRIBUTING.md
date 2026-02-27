@@ -11,6 +11,10 @@ Simply ask your agent for its observations.
 Could you use aide in Your last task? Did You observe an unexpected result or did you miss a functionality?
 ```
 
+## out of scope decisions
+* backwards compatibility for python < 3.12. Please maintain your code first. Agents per default try to provide backwards compatibility beyond EOLs but it complicates the development process unnecessarily. 
+* aide as a bridge between agents. (tested and behaved non-deterministically between the parties -> rolled back) 
+
 ## Architecture Guidelines
 
 AIDE is separated into a core execution environment and a modular plugin framework:
