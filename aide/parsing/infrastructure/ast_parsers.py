@@ -1,5 +1,5 @@
 import ast
-from typing import List
+from typing import Any, Tuple, Callable, Generator
 from aide.parsing.domain.ports import LanguageParserPort
 from aide.parsing.domain.models import SymbolNode
 
@@ -7,7 +7,7 @@ class AstPythonParser(LanguageParserPort):
     """Uses the native Python `ast` module to deterministically build precise symbol trees, 
     eliminating regex logic flaws for nested classes or multiline definitions."""
     
-    def parse(self, content: str, file_extension: str) -> List[SymbolNode]:
+    def parse(self, content: str, file_extension: str) -> list[SymbolNode]:
         if file_extension != ".py":
             return []
             
@@ -20,30 +20,31 @@ class AstPythonParser(LanguageParserPort):
             
         return self._walk(tree.body)
         
-    def _walk(self, nodes: list) -> List[SymbolNode]:
+    def _walk(self, nodes: list) -> list[SymbolNode]:
         symbols = []
         for node in nodes:
-            if isinstance(node, ast.ClassDef):
-                children = self._walk(node.body)
-                symbols.append(SymbolNode(
-                    name=node.name,
-                    kind="class",
-                    line_number=node.lineno,
-                    children=children
-                ))
-            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-                children = self._walk(node.body)
-                symbols.append(SymbolNode(
-                    name=node.name,
-                    kind="function",
-                    line_number=node.lineno,
-                    children=children
-                ))
+            match node:
+                case ast.ClassDef(name=name, lineno=lineno, body=body):
+                    children = self._walk(body)
+                    symbols.append(SymbolNode(
+                        name=name,
+                        kind="class",
+                        line_number=lineno,
+                        children=children
+                    ))
+                case ast.FunctionDef(name=name, lineno=lineno, body=body) | ast.AsyncFunctionDef(name=name, lineno=lineno, body=body):
+                    children = self._walk(body)
+                    symbols.append(SymbolNode(
+                        name=name,
+                        kind="function",
+                        line_number=lineno,
+                        children=children
+                    ))
             # We skip ast.Assign (variables) purely because AIDE currently focuses on 
             # top-level structural bounds (classes/functions) for outline and movement.
         return symbols
 
-    def parse_imports(self, content: str, file_extension: str) -> List[str]:
+    def parse_imports(self, content: str, file_extension: str) -> list[str]:
         if file_extension != ".py":
             return []
             
@@ -54,12 +55,12 @@ class AstPythonParser(LanguageParserPort):
             
         imports = []
         for node in ast.walk(tree):
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    imports.append(alias.name)
-            elif isinstance(node, ast.ImportFrom):
-                if node.module:
-                    imports.append(node.module)
+            match node:
+                case ast.Import(names=names):
+                    for alias in names:
+                        imports.append(alias.name)
+                case ast.ImportFrom(module=module) if module is not None:
+                    imports.append(module)
                     # We could also append node.module + "." + alias.name, but usually 
                     # the module or package origin is sufficient for AIDE dependency checks.
         return imports

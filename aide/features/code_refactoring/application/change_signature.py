@@ -1,6 +1,6 @@
 import os
 import re
-from typing import List
+from typing import Any, Tuple, Callable, Generator
 from aide.features.code_inspection.application.find_usages import FindUsagesUseCase
 
 class ChangeSignatureUseCase:

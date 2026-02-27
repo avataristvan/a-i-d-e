@@ -9,7 +9,7 @@ class ExecuteTestsUseCase:
     def __init__(self, file_system):
         self.file_system = file_system
         
-    def execute(self, path: str, format: str = "json") -> Dict[str, Any]:
+    def execute(self, path: str, format: str = "json") -> dict[str, Any]:
         try:
             list(self.file_system.walk_files(path))
             

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Generator, List, Tuple, Optional, Set
+from typing import Any, Tuple, Callable, Generator
 
 class FileSystemPort(ABC):
     @abstractmethod
@@ -54,12 +54,12 @@ class FileSystemPort(ABC):
 
 class LanguageStrategy(ABC):
     @abstractmethod
-    def extract_imports_and_header(self, lines: List[str]) -> Tuple[List[str], Optional[str]]:
+    def extract_imports_and_header(self, lines: list[str]) -> tuple[list[str], str | None]:
         """Returns list of imports and the package/header declaration (e.g. 'package ...')."""
         pass
 
     @abstractmethod
-    def get_package_header(self, file_path: str) -> Optional[str]:
+    def get_package_header(self, file_path: str) -> str | None:
         """Returns the package/header line for a new file based on its path."""
         pass
 
@@ -74,7 +74,7 @@ class LanguageStrategy(ABC):
         pass
 
     @abstractmethod
-    def find_symbol_range(self, lines: List[str], symbol: str) -> Tuple[Optional[int], Optional[int]]:
+    def find_symbol_range(self, lines: list[str], symbol: str) -> tuple[int | None, int | None]:
         """Finds start and end line of a symbol (1-based)."""
         pass
 
@@ -84,7 +84,7 @@ class LanguageStrategy(ABC):
         pass
 
     @abstractmethod
-    def find_variables(self, text: str) -> Set[str]:
+    def find_variables(self, text: str) -> set[str]:
         """Finds potential variable identifiers in text block."""
         pass
 
@@ -94,12 +94,12 @@ class LanguageStrategy(ABC):
         pass
 
     @abstractmethod
-    def infer_types(self, parameters: List[str], context_text: str) -> List[Tuple[str, str]]:
+    def infer_types(self, parameters: list[str], context_text: str) -> list[tuple[str, str]]:
         """Infers types for a list of variables from context."""
         pass
 
     @abstractmethod
-    def get_function_template(self, name: str, params_str: str, body: List[str], scope: str, indent: str) -> str:
+    def get_function_template(self, name: str, params_str: str, body: list[str], scope: str, indent: str) -> str:
         """Generates a function definition template."""
         pass
 

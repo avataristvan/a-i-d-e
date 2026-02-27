@@ -1,5 +1,5 @@
 import re
-from typing import List
+from typing import Any, Tuple, Callable, Generator
 from aide.parsing.domain.ports import LanguageParserPort
 from aide.parsing.domain.models import SymbolNode
 
@@ -14,16 +14,16 @@ class CompositeLanguageParser(LanguageParserPort):
     def register(self, extension: str, parser: LanguageParserPort):
         self._parsers[extension] = parser
         
-    def parse(self, content: str, file_extension: str) -> List[SymbolNode]:
+    def parse(self, content: str, file_extension: str) -> list[SymbolNode]:
         parser = self._parsers.get(file_extension, self._fallback)
         return parser.parse(content, file_extension)
 
-    def parse_imports(self, content: str, file_extension: str) -> List[str]:
+    def parse_imports(self, content: str, file_extension: str) -> list[str]:
         parser = self._parsers.get(file_extension, self._fallback)
         return parser.parse_imports(content, file_extension)
 
 class RegexLanguageParser(LanguageParserPort):
-    def parse(self, content: str, file_extension: str) -> List[SymbolNode]:
+    def parse(self, content: str, file_extension: str) -> list[SymbolNode]:
         lines = content.splitlines()
         nodes = []
         
@@ -33,79 +33,73 @@ class RegexLanguageParser(LanguageParserPort):
         
         patterns = []
         
-        if file_extension in {'.py'}:
-            patterns = [
-                (r'^\s*class\s+(\w+)', 'class'),
-                (r'^\s*def\s+(\w+)', 'function'),
-            ]
-        elif file_extension in {'.kt', '.java'}:
-            patterns = [
-                (r'^\s*.*class\s+(\w+)', 'class'),
-                (r'^\s*.*interface\s+(\w+)', 'interface'),
-                (r'^\s*.*object\s+(\w+)', 'object'),
-                (r'^\s*.*fun\s+(?:[\w<>.]+\.)?(\w+)', 'function'),
-                # (r'^\s*.*val\s+(\w+)', 'variable'), # Might be too noisy
-            ]
-        elif file_extension in {'.ts', '.tsx', '.js', '.jsx'}:
-            patterns = [
-                (r'^\s*(?:export\s+)?(?:abstract\s+)?class\s+(\w+)', 'class'),
-                (r'^\s*(?:export\s+)?interface\s+(\w+)', 'interface'),
-                (r'^\s*(?:export\s+)?type\s+(\w+)', 'type'),
-                (r'^\s*(?:export\s+)?enum\s+(\w+)', 'enum'),
-                # React Component (Functional, uppercase start)
-                (r'^\s*(?:export\s+)?(?:async\s+)?function\s+([A-Z]\w+)', 'component'),
-                # React Hook (use...)
-                (r'^\s*(?:export\s+)?(?:async\s+)?function\s+(use\w+)', 'hook'),
-                # Standard Function (other)
-                (r'^\s*(?:export\s+)?(?:async\s+)?function\s+([a-z]\w+)', 'function'),
-                # Arrow Component (const X = ... =>)
-                (r'^\s*(?:export\s+)?const\s+([A-Z]\w+)\s*=\s*(?:async\s+)?.*=>', 'component'),
-                (r'^\s*(?:export\s+)?const\s+(\w+)\s*=\s*React\.memo', 'component'), 
-                (r'^\s*(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s+)?(?:<|\()', 'arrow_function'), 
-            ]
-            
-        elif file_extension in {'.cs'}:
-            patterns = [
-                (r'^\s*(?:public\s+|private\s+|protected\s+|internal\s+|static\s+|sealed\s+|abstract\s+|partial\s+)*class\s+(\w+)', 'class'),
-                (r'^\s*(?:public\s+|private\s+|protected\s+|internal\s+|static\s+|sealed\s+|abstract\s+|partial\s+)*interface\s+(\w+)', 'interface'),
-                (r'^\s*(?:public\s+|private\s+|protected\s+|internal\s+|static\s+|sealed\s+|abstract\s+|partial\s+)*enum\s+(\w+)', 'enum'),
-                (r'^\s*(?:public\s+|private\s+|protected\s+|internal\s+|static\s+|virtual\s+|override\s+|sealed\s+|abstract\s+|async\s+)*[\w<>, \[\]]+\s+(\w+)\s*\(', 'function'),
-            ]
-        elif file_extension in {'.rs'}:
-            patterns = [
-                (r'^\s*(?:pub\s+(?:\([^)]+\)\s+)?)?struct\s+(\w+)', 'struct'),
-                (r'^\s*(?:pub\s+(?:\([^)]+\)\s+)?)?enum\s+(\w+)', 'enum'),
-                (r'^\s*(?:pub\s+(?:\([^)]+\)\s+)?)?trait\s+(\w+)', 'trait'),
-                (r'^\s*(?:pub\s+(?:\([^)]+\)\s+)?)?(?:async\s+|const\s+|unsafe\s+|extern\s+)*fn\s+(\w+)', 'function'),
-                (r'^\s*(?:pub\s+(?:\([^)]+\)\s+)?)?mod\s+(\w+)', 'module'),
-            ]
-        elif file_extension in {'.go'}:
-            patterns = [
-                (r'^\s*type\s+(\w+)\s+struct', 'struct'),
-                (r'^\s*type\s+(\w+)\s+interface', 'interface'),
-                (r'^\s*func\s+(?:\([^)]+\)\s+)?(\w+)', 'function'),
-            ]
-        elif file_extension in {'.cpp', '.hpp', '.c', '.cc', '.h'}:
-             patterns = [
-                (r'^\s*(?:class|struct)\s+(\w+)', 'class'),
-                (r'^\s*(?:virtual\s+|inline\s+|constexpr\s+|static\s+)*[a-zA-Z0-9_<>:*\s]+\s+(\w+)\s*\(', 'function'),   
-             ]
-        elif file_extension in {'.scala'}:
-             patterns = [
-                (r'^\s*(?:private\s+|protected\s+|abstract\s+|sealed\s+|final\s+|implicit\s+|lazy\s+|override\s+)*class\s+(\w+)', 'class'),
-                (r'^\s*(?:private\s+|protected\s+|abstract\s+|sealed\s+|final\s+|implicit\s+|lazy\s+|override\s+)*trait\s+(\w+)', 'trait'),
-                (r'^\s*(?:private\s+|protected\s+|abstract\s+|sealed\s+|final\s+|implicit\s+|lazy\s+|override\s+)*object\s+(\w+)', 'object'),
-                (r'^\s*(?:private\s+|protected\s+|abstract\s+|sealed\s+|final\s+|implicit\s+|lazy\s+|override\s+)*def\s+(\w+)', 'function'),
-             ]
-        elif file_extension in {'.rb'}:
-             patterns = [
-                (r'^\s*module\s+(\w+)', 'module'),
-                (r'^\s*class\s+(\w+)', 'class'),
-                (r'^\s*def\s+(?:self\.)?(\w+)', 'function'),
-             ]
-            
-        if not patterns:
-            return []
+        match file_extension:
+            case '.py':
+                patterns = [
+                    (r'^\s*class\s+(\w+)', 'class'),
+                    (r'^\s*def\s+(\w+)', 'function'),
+                ]
+            case '.kt' | '.java':
+                patterns = [
+                    (r'^\s*.*class\s+(\w+)', 'class'),
+                    (r'^\s*.*interface\s+(\w+)', 'interface'),
+                    (r'^\s*.*object\s+(\w+)', 'object'),
+                    (r'^\s*.*fun\s+(?:[\w<>.]+\.)?(\w+)', 'function'),
+                ]
+            case '.ts' | '.tsx' | '.js' | '.jsx':
+                patterns = [
+                    (r'^\s*(?:export\s+)?(?:abstract\s+)?class\s+(\w+)', 'class'),
+                    (r'^\s*(?:export\s+)?interface\s+(\w+)', 'interface'),
+                    (r'^\s*(?:export\s+)?type\s+(\w+)', 'type'),
+                    (r'^\s*(?:export\s+)?enum\s+(\w+)', 'enum'),
+                    (r'^\s*(?:export\s+)?(?:async\s+)?function\s+([A-Z]\w+)', 'component'),
+                    (r'^\s*(?:export\s+)?(?:async\s+)?function\s+(use\w+)', 'hook'),
+                    (r'^\s*(?:export\s+)?(?:async\s+)?function\s+([a-z]\w+)', 'function'),
+                    (r'^\s*(?:export\s+)?const\s+([A-Z]\w+)\s*=\s*(?:async\s+)?.*=>', 'component'),
+                    (r'^\s*(?:export\s+)?const\s+(\w+)\s*=\s*React\.memo', 'component'), 
+                    (r'^\s*(?:export\s+)?const\s+(\w+)\s*=\s*(?:async\s+)?(?:<|\()', 'arrow_function'), 
+                ]
+            case '.cs':
+                patterns = [
+                    (r'^\s*(?:public\s+|private\s+|protected\s+|internal\s+|static\s+|sealed\s+|abstract\s+|partial\s+)*class\s+(\w+)', 'class'),
+                    (r'^\s*(?:public\s+|private\s+|protected\s+|internal\s+|static\s+|sealed\s+|abstract\s+|partial\s+)*interface\s+(\w+)', 'interface'),
+                    (r'^\s*(?:public\s+|private\s+|protected\s+|internal\s+|static\s+|sealed\s+|abstract\s+|partial\s+)*enum\s+(\w+)', 'enum'),
+                    (r'^\s*(?:public\s+|private\s+|protected\s+|internal\s+|static\s+|virtual\s+|override\s+|sealed\s+|abstract\s+|async\s+)*[\w<>, \[\]]+\s+(\w+)\s*\(', 'function'),
+                ]
+            case '.rs':
+                patterns = [
+                    (r'^\s*(?:pub\s+(?:\([^)]+\)\s+)?)?struct\s+(\w+)', 'struct'),
+                    (r'^\s*(?:pub\s+(?:\([^)]+\)\s+)?)?enum\s+(\w+)', 'enum'),
+                    (r'^\s*(?:pub\s+(?:\([^)]+\)\s+)?)?trait\s+(\w+)', 'trait'),
+                    (r'^\s*(?:pub\s+(?:\([^)]+\)\s+)?)?(?:async\s+|const\s+|unsafe\s+|extern\s+)*fn\s+(\w+)', 'function'),
+                    (r'^\s*(?:pub\s+(?:\([^)]+\)\s+)?)?mod\s+(\w+)', 'module'),
+                ]
+            case '.go':
+                patterns = [
+                    (r'^\s*type\s+(\w+)\s+struct', 'struct'),
+                    (r'^\s*type\s+(\w+)\s+interface', 'interface'),
+                    (r'^\s*func\s+(?:\([^)]+\)\s+)?(\w+)', 'function'),
+                ]
+            case '.cpp' | '.hpp' | '.c' | '.cc' | '.h':
+                 patterns = [
+                    (r'^\s*(?:class|struct)\s+(\w+)', 'class'),
+                    (r'^\s*(?:virtual\s+|inline\s+|constexpr\s+|static\s+)*[a-zA-Z0-9_<>:*\s]+\s+(\w+)\s*\(', 'function'),   
+                 ]
+            case '.scala':
+                 patterns = [
+                    (r'^\s*(?:private\s+|protected\s+|abstract\s+|sealed\s+|final\s+|implicit\s+|lazy\s+|override\s+)*class\s+(\w+)', 'class'),
+                    (r'^\s*(?:private\s+|protected\s+|abstract\s+|sealed\s+|final\s+|implicit\s+|lazy\s+|override\s+)*trait\s+(\w+)', 'trait'),
+                    (r'^\s*(?:private\s+|protected\s+|abstract\s+|sealed\s+|final\s+|implicit\s+|lazy\s+|override\s+)*object\s+(\w+)', 'object'),
+                    (r'^\s*(?:private\s+|protected\s+|abstract\s+|sealed\s+|final\s+|implicit\s+|lazy\s+|override\s+)*def\s+(\w+)', 'function'),
+                 ]
+            case '.rb':
+                 patterns = [
+                    (r'^\s*module\s+(\w+)', 'module'),
+                    (r'^\s*class\s+(\w+)', 'class'),
+                    (r'^\s*def\s+(?:self\.)?(\w+)', 'function'),
+                 ]
+            case _:
+                return []
 
         for i, line in enumerate(lines):
             line_num = i + 1
@@ -121,44 +115,34 @@ class RegexLanguageParser(LanguageParserPort):
                     
         return nodes
 
-    def parse_imports(self, content: str, file_extension: str) -> List[str]:
+    def parse_imports(self, content: str, file_extension: str) -> list[str]:
         imports = []
         lines = content.splitlines()
         
         # Regex for imports
         pattern = None
         
-        if file_extension in {'.kt', '.java'}:
-            # import com.example.Foo
-            pattern = r'^\s*import\s+([\w\.]+)'
-        elif file_extension in {'.py'}:
-            # import foo
-            # from foo import bar
-            # We want 'foo' from 'import foo' or 'foo' from 'from foo import bar'
-            # This is tricky with regex. Let's just grab the whole line for audit purposes or simple extraction.
-            # But the contract returns List[str]. 
-            # For Python audit, we might need the full import line to check "from ... import ...". 
-            # But let's stick to extraction of the *module* name if possible.
-            pass # TODO: Python import parsing
-        elif file_extension in {'.ts', '.tsx', '.js', '.jsx'}:
-            # import ... from '...'
-            # import '...'
-            pattern = r'^\s*import\s+(?:.*from\s+)?[\'"]([^\'"]+)[\'"]'
-        elif file_extension in {'.cs'}:
-            pattern = r'^\s*using\s+([\w\.]+);'
-        elif file_extension in {'.rs'}:
-            pattern = r'^\s*use\s+([^;]+);'
-        elif file_extension in {'.go'}:
-            pattern = r'^\s*(?:import\s+)?[\'"]([^\'"]+)[\'"]' # very naive go import
-        elif file_extension in {'.cpp', '.hpp', '.c', '.cc', '.h'}:
-            pattern = r'^\s*#include\s*[<"]([^>"]+)[>"]'
-        elif file_extension in {'.scala'}:
-            pattern = r'^\s*import\s+([\w\.]+)'
-        elif file_extension in {'.rb'}:
-            pattern = r'^\s*(?:require|require_relative|load)\s+[\'"]([^\'"]+)[\'"]'
-
-        if not pattern and file_extension not in {'.py', '.go'}:
-             return []
+        match file_extension:
+            case '.kt' | '.java':
+                pattern = r'^\s*import\s+([\w\.]+)'
+            case '.py':
+                pass # TODO: Python import parsing
+            case '.ts' | '.tsx' | '.js' | '.jsx':
+                pattern = r'^\s*import\s+(?:.*from\s+)?[\'"]([^\'"]+)[\'"]'
+            case '.cs':
+                pattern = r'^\s*using\s+([\w\.]+);'
+            case '.rs':
+                pattern = r'^\s*use\s+([^;]+);'
+            case '.go':
+                pattern = r'^\s*(?:import\s+)?[\'"]([^\'"]+)[\'"]'
+            case '.cpp' | '.hpp' | '.c' | '.cc' | '.h':
+                pattern = r'^\s*#include\s*[<"]([^>"]+)[>"]'
+            case '.scala':
+                pattern = r'^\s*import\s+([\w\.]+)'
+            case '.rb':
+                pattern = r'^\s*(?:require|require_relative|load)\s+[\'"]([^\'"]+)[\'"]'
+            case _:
+                return []
 
         for line in lines:
             if file_extension in {'.kt', '.java', '.ts', '.tsx', '.js', '.jsx', '.cs', '.rs', '.cpp', '.hpp', '.c', '.cc', '.h', '.scala', '.rb'}:

@@ -1,6 +1,6 @@
 import os
 import re
-from typing import Optional, Tuple, List
+from typing import Any, Tuple, Callable, Generator
 
 class MoveSymbolUseCase:
     def __init__(self, file_system, language_parser, strategy_provider):

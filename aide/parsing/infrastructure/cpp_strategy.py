@@ -1,6 +1,6 @@
 import re
 import os
-from typing import List, Tuple, Optional, Set
+from typing import Any, Tuple, Callable, Generator
 from aide.core.domain.ports import LanguageStrategy
 
 class CppLanguageStrategy(LanguageStrategy):
@@ -8,7 +8,7 @@ class CppLanguageStrategy(LanguageStrategy):
     C++-specific refactoring strategy.
     Handles #include, namespaces, and bracket-based block detection.
     """
-    def extract_imports_and_header(self, lines: List[str]) -> Tuple[List[str], Optional[str]]:
+    def extract_imports_and_header(self, lines: list[str]) -> tuple[list[str], str | None]:
         """Extracts #include and namespace declarations."""
         imports = []
         header = None
@@ -20,7 +20,7 @@ class CppLanguageStrategy(LanguageStrategy):
                 header = stripped.rstrip("{").strip()
         return imports, header
 
-    def get_package_header(self, file_path: str) -> Optional[str]:
+    def get_package_header(self, file_path: str) -> str | None:
         ns = self.get_module_path(file_path)
         return f"namespace {ns} {{" if ns else None
 
@@ -36,7 +36,7 @@ class CppLanguageStrategy(LanguageStrategy):
         # Simple heuristic: if we are moving to a class, we might need 'public:'
         return content
 
-    def find_symbol_range(self, lines: List[str], symbol: str) -> Tuple[Optional[int], Optional[int]]:
+    def find_symbol_range(self, lines: list[str], symbol: str) -> tuple[int | None, int | None]:
         """Finds the start and end lines of a C++ symbol using bracket matching."""
         # Matches: class/struct/void/... SymbolName
         pattern = re.compile(rf"\b(class|struct|enum|void|[\w:<>[\]\*&]+)\s+{re.escape(symbol)}\b")
@@ -96,7 +96,7 @@ class CppLanguageStrategy(LanguageStrategy):
         # C++ uses #include. Assuming package is the header path here for simplicity.
         return f'#include "{package}.hpp"'
 
-    def find_variables(self, text: str) -> Set[str]:
+    def find_variables(self, text: str) -> set[str]:
         keywords = {
             "alignas", "alignof", "and", "and_eq", "asm", "atomic_cancel", "atomic_commit", "atomic_noexcept", "auto", "bitand", "bitor", "bool", "break", "case", "catch", "char", "char8_t", "char16_t", "char32_t", "class", "compl", "concept", "const", "consteval", "constexpr", "constinit", "const_cast", "continue", "co_await", "co_return", "co_yield", "decltype", "default", "delete", "do", "double", "dynamic_cast", "else", "enum", "explicit", "export", "extern", "false", "float", "for", "friend", "goto", "if", "inline", "int", "long", "mutable", "namespace", "new", "noexcept", "not", "not_eq", "nullptr", "operator", "or", "or_eq", "private", "protected", "public", "reflexpr", "register", "reinterpret_cast", "requires", "return", "short", "signed", "sizeof", "static", "static_assert", "static_cast", "struct", "switch", "synchronized", "template", "this", "thread_local", "throw", "true", "try", "typedef", "typeid", "typename", "union", "unsigned", "using", "virtual", "void", "volatile", "wchar_t", "while", "xor", "xor_eq"
         }
@@ -111,7 +111,7 @@ class CppLanguageStrategy(LanguageStrategy):
         ]
         return any(re.search(p, context_text) for p in patterns)
 
-    def infer_types(self, parameters: List[str], context_text: str) -> List[Tuple[str, str]]:
+    def infer_types(self, parameters: list[str], context_text: str) -> list[tuple[str, str]]:
         typed = []
         for var in parameters:
             # Match "Type var"
@@ -119,7 +119,7 @@ class CppLanguageStrategy(LanguageStrategy):
             typed.append((var, match.group(1).strip() if match else "auto"))
         return typed
 
-    def get_function_template(self, name: str, params_str: str, body: List[str], scope: str, indent: str) -> str:
+    def get_function_template(self, name: str, params_str: str, body: list[str], scope: str, indent: str) -> str:
         code = f"\n\n{indent}void {name}({params_str})\n{indent}{{\n"
         for line in body:
             code += line + "\n"

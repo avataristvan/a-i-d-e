@@ -1,5 +1,5 @@
 import re
-from typing import List, Tuple, Set
+from typing import Any, Tuple, Callable, Generator
 
 class ExtractFunctionUseCase:
     def __init__(self, file_system, strategy_provider):

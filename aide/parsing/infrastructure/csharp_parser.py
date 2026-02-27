@@ -1,6 +1,6 @@
 import tree_sitter_c_sharp
 from tree_sitter import Language, Parser
-from typing import List
+from typing import Any, Tuple, Callable, Generator
 from aide.parsing.domain.ports import LanguageParserPort
 from aide.parsing.domain.models import SymbolNode
 
@@ -9,62 +9,57 @@ class CSharpLanguageParser(LanguageParserPort):
         self.language = Language(tree_sitter_c_sharp.language())
         self.parser = Parser(self.language)
 
-    def parse(self, content: str, file_extension: str) -> List[SymbolNode]:
+    def parse(self, content: str, file_extension: str) -> list[SymbolNode]:
         tree = self.parser.parse(bytes(content, "utf8"))
         root_node = tree.root_node
         return self._extract_nodes(root_node)
 
-    def _extract_nodes(self, node) -> List[SymbolNode]:
+    def _extract_nodes(self, node) -> list[SymbolNode]:
         symbols = []
         for child in node.children:
-            if child.type in [
-                "class_declaration",
-                "interface_declaration",
-                "struct_declaration",
-                "enum_declaration",
-                "record_declaration"
-            ]:
-                name_node = child.child_by_field_name("name")
-                if name_node:
-                    name = name_node.text.decode("utf8")
-                    kind = child.type.replace("_declaration", "")
-                    # Extract children (methods, nested classes, etc.)
+            match child.type:
+                case "class_declaration" | "interface_declaration" | "struct_declaration" | "enum_declaration" | "record_declaration":
+                    name_node = child.child_by_field_name("name")
+                    if name_node:
+                        name = name_node.text.decode("utf8")
+                        kind = child.type.replace("_declaration", "")
+                        # Extract children (methods, nested classes, etc.)
+                        body = child.child_by_field_name("body")
+                        children_symbols = []
+                        if body:
+                            children_symbols = self._extract_nodes(body)
+                        
+                        symbols.append(
+                            SymbolNode(
+                                name=name,
+                                kind=kind,
+                                line_number=child.start_point[0] + 1,
+                                children=children_symbols
+                            )
+                        )
+                case "method_declaration":
+                    name_node = child.child_by_field_name("name")
+                    if name_node:
+                        name = name_node.text.decode("utf8")
+                        symbols.append(
+                            SymbolNode(
+                                name=name,
+                                kind="function",
+                                line_number=child.start_point[0] + 1,
+                                children=[]
+                            )
+                        )
+                case "namespace_declaration" | "file_scoped_namespace_declaration":
+                    # C# namespaces can contain classes directly
                     body = child.child_by_field_name("body")
-                    children_symbols = []
                     if body:
-                        children_symbols = self._extract_nodes(body)
-                    
-                    symbols.append(
-                        SymbolNode(
-                            name=name,
-                            kind=kind,
-                            line_number=child.start_point[0] + 1,
-                            children=children_symbols
-                        )
-                    )
-            elif child.type == "method_declaration":
-                name_node = child.child_by_field_name("name")
-                if name_node:
-                    name = name_node.text.decode("utf8")
-                    symbols.append(
-                        SymbolNode(
-                            name=name,
-                            kind="function",
-                            line_number=child.start_point[0] + 1,
-                            children=[]
-                        )
-                    )
-            elif child.type == "namespace_declaration" or child.type == "file_scoped_namespace_declaration":
-                # C# namespaces can contain classes directly
-                body = child.child_by_field_name("body")
-                if body:
-                    symbols.extend(self._extract_nodes(body))
-                else: # file_scoped_namespace_declaration doesn't have a distinct body node, children are direct
-                    symbols.extend(self._extract_nodes(child))
+                        symbols.extend(self._extract_nodes(body))
+                    else: # file_scoped_namespace_declaration doesn't have a distinct body node, children are direct
+                        symbols.extend(self._extract_nodes(child))
 
         return symbols
 
-    def parse_imports(self, content: str, file_extension: str) -> List[str]:
+    def parse_imports(self, content: str, file_extension: str) -> list[str]:
         tree = self.parser.parse(bytes(content, "utf8"))
         root_node = tree.root_node
         imports = []

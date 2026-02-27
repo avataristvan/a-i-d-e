@@ -1,13 +1,13 @@
 import os
 import re
-from typing import List, Tuple
+from typing import Any, Tuple, Callable, Generator
 
 class FindUsagesUseCase:
     def __init__(self, file_system, language_parser):
         self.file_system = file_system
         self.language_parser = language_parser
 
-    def execute(self, root_path: str, symbol_name: str) -> List[str]:
+    def execute(self, root_path: str, symbol_name: str) -> list[str]:
         usages = []
         try:
             # 1. Walk through all files in root_path

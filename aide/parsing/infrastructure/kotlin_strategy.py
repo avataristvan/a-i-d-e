@@ -1,10 +1,10 @@
 import re
 import os
-from typing import List, Tuple, Optional
+from typing import Any, Tuple, Callable, Generator
 from aide.core.domain.ports import LanguageStrategy
 
 class KotlinLanguageStrategy(LanguageStrategy):
-    def extract_imports_and_header(self, lines: List[str]) -> Tuple[List[str], Optional[str]]:
+    def extract_imports_and_header(self, lines: list[str]) -> tuple[list[str], str | None]:
         imports = []
         header = None
         for line in lines:
@@ -14,7 +14,7 @@ class KotlinLanguageStrategy(LanguageStrategy):
                 imports.append(line.strip())
         return imports, header
 
-    def get_package_header(self, file_path: str) -> Optional[str]:
+    def get_package_header(self, file_path: str) -> str | None:
         pkg = self.get_module_path(file_path)
         return f"package {pkg}" if pkg else None
 
@@ -36,7 +36,7 @@ class KotlinLanguageStrategy(LanguageStrategy):
     def adjust_visibility(self, content: str) -> str:
         return re.sub(r'\bprivate\s+(fun|class|object|interface|val|var)\b', r'\1', content)
 
-    def find_symbol_range(self, lines: List[str], symbol: str) -> Tuple[Optional[int], Optional[int]]:
+    def find_symbol_range(self, lines: list[str], symbol: str) -> tuple[int | None, int | None]:
         pattern = re.compile(rf"\b(fun|class|interface|object)\s+([\w\.]+\.)?{re.escape(symbol)}\b")
         start_line = -1
         for i, line in enumerate(lines):
@@ -92,7 +92,7 @@ class KotlinLanguageStrategy(LanguageStrategy):
         patterns = [rf"\bval\s+{var_name}\b", rf"\bvar\s+{var_name}\b", rf"\b{var_name}\s*:"]
         return any(re.search(p, context_text) for p in patterns)
 
-    def infer_types(self, parameters: List[str], context_text: str) -> List[Tuple[str, str]]:
+    def infer_types(self, parameters: list[str], context_text: str) -> list[tuple[str, str]]:
         typed = []
         for var in parameters:
             match = re.search(rf"\b(?:val|var)\s+{var}\s*:\s*([\w<>?]+)", context_text)
@@ -101,7 +101,7 @@ class KotlinLanguageStrategy(LanguageStrategy):
             typed.append((var, match.group(1) if match else "Any"))
         return typed
 
-    def get_function_template(self, name: str, params_str: str, body: List[str], scope: str, indent: str) -> str:
+    def get_function_template(self, name: str, params_str: str, body: list[str], scope: str, indent: str) -> str:
         code = f"\n\n{indent}{scope} fun {name}({params_str}) {{\n"
         for line in body:
             code += line + "\n"

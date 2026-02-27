@@ -1,6 +1,6 @@
 import re
 import os
-from typing import List, Tuple, Optional, Set
+from typing import Any, Tuple, Callable, Generator
 from aide.core.domain.ports import LanguageStrategy
 
 class RustLanguageStrategy(LanguageStrategy):
@@ -9,7 +9,7 @@ class RustLanguageStrategy(LanguageStrategy):
         # Making it public involves adding `pub` or `pub(crate)`.
         return content
 
-    def extract_imports_and_header(self, lines: List[str]) -> Tuple[List[str], str]:
+    def extract_imports_and_header(self, lines: list[str]) -> tuple[list[str], str]:
         imports = []
         for line in lines:
             stripped = line.strip()
@@ -21,7 +21,7 @@ class RustLanguageStrategy(LanguageStrategy):
         # Rust doesn't really have a file-level "package" header like Java/C#. It uses `mod` declarations in lib.rs/mod.rs.
         return imports, ""
 
-    def find_symbol_range(self, lines: List[str], symbol: str) -> Tuple[Optional[int], Optional[int]]:
+    def find_symbol_range(self, lines: list[str], symbol: str) -> tuple[int | None, int | None]:
         """
         Naive brace counting to find a symbol block.
         """
@@ -83,11 +83,11 @@ class RustLanguageStrategy(LanguageStrategy):
             return f"use {module_path}::{symbol};"
         return f"use {symbol};"
 
-    def get_package_header(self, file_path: str) -> Optional[str]:
+    def get_package_header(self, file_path: str) -> str | None:
         # Rust files don't declare their own package header like Java.
         return None
 
-    def find_variables(self, text: str) -> Set[str]:
+    def find_variables(self, text: str) -> set[str]:
         keywords = {"let", "mut", "fn", "struct", "enum", "trait", "impl", "use", "mod", "pub", "crate", "self", "Self", "match", "if", "else", "loop", "while", "for", "in", "return", "break", "continue", "async", "await", "unsafe", "where", "type", "as", "const", "static"}
         matches = re.findall(r'\b[a-z_][a-zA-Z0-9_]*\b', text)
         return set([m for m in matches if m not in keywords])
@@ -96,14 +96,14 @@ class RustLanguageStrategy(LanguageStrategy):
         patterns = [rf"\blet\s+(?:mut\s+)?{var_name}\b", rf"\bfn\s+{var_name}\b"]
         return any(re.search(p, context_text) for p in patterns)
 
-    def infer_types(self, parameters: List[str], context_text: str) -> List[Tuple[str, str]]:
+    def infer_types(self, parameters: list[str], context_text: str) -> list[tuple[str, str]]:
         typed = []
         for var in parameters:
             match = re.search(rf"\b{var}\s*:\s*([\w<>: &]+)", context_text)
             typed.append((var, match.group(1).strip() if match else "&str")) # default to &str as a guess
         return typed
 
-    def get_function_template(self, name: str, params_str: str, body: List[str], scope: str, indent: str) -> str:
+    def get_function_template(self, name: str, params_str: str, body: list[str], scope: str, indent: str) -> str:
         visibility = "pub " if scope != "private" else ""
         code = f"\n\n{indent}{visibility}fn {name}({params_str}) {{\n"
         for line in body:

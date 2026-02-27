@@ -1,10 +1,10 @@
 import re
 import os
-from typing import List, Tuple, Optional, Set
+from typing import Any, Tuple, Callable, Generator
 from aide.core.domain.ports import LanguageStrategy
 
 class TypeScriptLanguageStrategy(LanguageStrategy):
-    def extract_imports_and_header(self, lines: List[str]) -> Tuple[List[str], Optional[str]]:
+    def extract_imports_and_header(self, lines: list[str]) -> tuple[list[str], str | None]:
         imports = []
         header = None 
         
@@ -25,7 +25,7 @@ class TypeScriptLanguageStrategy(LanguageStrategy):
                     
         return imports, header
 
-    def get_package_header(self, file_path: str) -> Optional[str]:
+    def get_package_header(self, file_path: str) -> str | None:
         return None # TS is header-less
 
     def get_module_path(self, file_path: str) -> str:
@@ -41,7 +41,7 @@ class TypeScriptLanguageStrategy(LanguageStrategy):
             return "export " + stripped
         return stripped
 
-    def find_symbol_range(self, lines: List[str], symbol: str) -> Tuple[Optional[int], Optional[int]]:
+    def find_symbol_range(self, lines: list[str], symbol: str) -> tuple[int | None, int | None]:
         pattern = re.compile(rf"\b(export\s+)?(async\s+)?(function|class|interface|type|enum|const)\s+{re.escape(symbol)}\b")
         start_line = -1
         for i, line in enumerate(lines):
@@ -90,7 +90,7 @@ class TypeScriptLanguageStrategy(LanguageStrategy):
     def get_import_statement(self, package: str, symbol: str) -> str:
         return f"import {{ {symbol} }} from '{package}';"
 
-    def find_variables(self, text: str) -> Set[str]:
+    def find_variables(self, text: str) -> set[str]:
         keywords = {"const", "let", "var", "function", "class", "interface", "type", "enum", "if", "else", "for", "while", "return", "true", "false", "null", "this", "super", "export", "import", "async", "await", "yield", "from", "as"}
         matches = re.findall(r'\b[a-z][a-zA-Z0-9_]*\b', text)
         return set([m for m in matches if m not in keywords])
@@ -99,14 +99,14 @@ class TypeScriptLanguageStrategy(LanguageStrategy):
         patterns = [rf"\bconst\s+{var_name}\b", rf"\blet\s+{var_name}\b", rf"\bvar\s+{var_name}\b", rf"\bfunction\s+{var_name}\b", rf"\b{var_name}\s*:"]
         return any(re.search(p, context_text) for p in patterns)
 
-    def infer_types(self, parameters: List[str], context_text: str) -> List[Tuple[str, str]]:
+    def infer_types(self, parameters: list[str], context_text: str) -> list[tuple[str, str]]:
         typed = []
         for var in parameters:
             match = re.search(rf"\b{var}\s*:\s*([\w<>?\[\]]+)", context_text)
             typed.append((var, match.group(1) if match else "any"))
         return typed
 
-    def get_function_template(self, name: str, params_str: str, body: List[str], scope: str, indent: str) -> str:
+    def get_function_template(self, name: str, params_str: str, body: list[str], scope: str, indent: str) -> str:
         visibility = "export " if scope in {"public", "internal"} else ""
         code = f"\n\n{indent}{visibility}function {name}({params_str}) {{\n"
         for line in body:

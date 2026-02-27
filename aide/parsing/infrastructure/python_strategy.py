@@ -1,6 +1,6 @@
 import re
 import os
-from typing import List, Tuple, Optional, Set
+from typing import Any, Tuple, Callable, Generator
 from aide.core.domain.ports import LanguageStrategy
 
 class PythonLanguageStrategy(LanguageStrategy):
@@ -8,7 +8,7 @@ class PythonLanguageStrategy(LanguageStrategy):
     Python-specific refactoring strategy.
     Uses indentation-based block detection for symbols.
     """
-    def extract_imports_and_header(self, lines: List[str]) -> Tuple[List[str], Optional[str]]:
+    def extract_imports_and_header(self, lines: list[str]) -> tuple[list[str], str | None]:
         """Extracts all 'import' and 'from ... import' statements."""
         imports = []
         for line in lines:
@@ -17,7 +17,7 @@ class PythonLanguageStrategy(LanguageStrategy):
                 imports.append(stripped)
         return imports, None # Python has no package header in the file content
 
-    def get_package_header(self, file_path: str) -> Optional[str]:
+    def get_package_header(self, file_path: str) -> str | None:
         """Python files do not require a package header."""
         return None
 
@@ -31,7 +31,7 @@ class PythonLanguageStrategy(LanguageStrategy):
         """Python visibility is convention-based; no changes needed during move."""
         return content
 
-    def find_symbol_range(self, lines: List[str], symbol: str) -> Tuple[Optional[int], Optional[int]]:
+    def find_symbol_range(self, lines: list[str], symbol: str) -> tuple[int | None, int | None]:
         """Finds the start and end lines of a class or function using indentation."""
         pattern = re.compile(rf"^(async\s+)?(def|class)\s+{re.escape(symbol)}\b")
         start_line = -1
@@ -75,7 +75,7 @@ class PythonLanguageStrategy(LanguageStrategy):
     def get_import_statement(self, package: str, symbol: str) -> str:
         return f"from {package} import {symbol}"
 
-    def find_variables(self, text: str) -> Set[str]:
+    def find_variables(self, text: str) -> set[str]:
         keywords = {"def", "class", "if", "else", "elif", "for", "while", "return", "import", "from", "async", "await", "yield", "as", "with", "try", "except", "finally", "None", "True", "False", "and", "or", "not", "is", "in"}
         matches = re.findall(r'\b[a-z_][a-zA-Z0-9_]*\b', text)
         return set([m for m in matches if m not in keywords])
@@ -85,7 +85,7 @@ class PythonLanguageStrategy(LanguageStrategy):
         patterns = [rf"^{var_name}\s*=", rf"\bdef\s+{var_name}\b", rf"\bclass\s+{var_name}\b"]
         return any(re.search(p, context_text, re.MULTILINE) for p in patterns)
 
-    def infer_types(self, parameters: List[str], context_text: str) -> List[Tuple[str, str]]:
+    def infer_types(self, parameters: list[str], context_text: str) -> list[tuple[str, str]]:
         typed = []
         for var in parameters:
             # Look for type hints: var: Type
@@ -93,7 +93,7 @@ class PythonLanguageStrategy(LanguageStrategy):
             typed.append((var, match.group(1) if match else "Any"))
         return typed
 
-    def get_function_template(self, name: str, params_str: str, body: List[str], scope: str, indent: str) -> str:
+    def get_function_template(self, name: str, params_str: str, body: list[str], scope: str, indent: str) -> str:
         # scope isn't strictly used in top-level python functions as much as underscores
         prefix = "_" if scope == "private" else ""
         code = f"\n\ndef {prefix}{name}({params_str}):\n"

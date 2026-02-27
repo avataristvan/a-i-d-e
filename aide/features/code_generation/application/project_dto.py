@@ -38,7 +38,7 @@ class ProjectDtoUseCase:
     def _extract_fields(self, body: str, stack: str):
         fields = []
         if stack == "python":
-            # Matches: id: str,   name: Optional[str] = None
+            # Matches: id: str,   name: str | None = None
             matches = re.finditer(r'^\s*([a-zA-Z0-9_]+)\s*:\s*([^=&#\n]+)', body, re.MULTILINE)
             for m in matches:
                 name = m.group(1).strip()

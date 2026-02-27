@@ -11,7 +11,7 @@ class AuditCoverageUseCase:
     def __init__(self, file_system):
         self.file_system = file_system
         
-    def execute(self, src_dir: str, tests_dir: str, format: str = "json") -> Dict[str, Any]:
+    def execute(self, src_dir: str, tests_dir: str, format: str = "json") -> dict[str, Any]:
         try:
             # Validate paths
             list(self.file_system.walk_files(src_dir))

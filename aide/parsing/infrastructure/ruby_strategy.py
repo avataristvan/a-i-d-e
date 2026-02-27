@@ -1,6 +1,6 @@
 import re
 import os
-from typing import List, Tuple, Optional, Set
+from typing import Any, Tuple, Callable, Generator
 from aide.core.domain.ports import LanguageStrategy
 
 class RubyLanguageStrategy(LanguageStrategy):
@@ -8,7 +8,7 @@ class RubyLanguageStrategy(LanguageStrategy):
     Ruby-specific refactoring strategy.
     Handles 'require', 'module', 'class', 'def' and 'end'-based block detection.
     """
-    def extract_imports_and_header(self, lines: List[str]) -> Tuple[List[str], Optional[str]]:
+    def extract_imports_and_header(self, lines: list[str]) -> tuple[list[str], str | None]:
         """Extracts 'require' and 'require_relative' statements."""
         imports = []
         for line in lines:
@@ -17,7 +17,7 @@ class RubyLanguageStrategy(LanguageStrategy):
                 imports.append(stripped)
         return imports, None # Ruby doesn't have a package header
 
-    def get_package_header(self, file_path: str) -> Optional[str]:
+    def get_package_header(self, file_path: str) -> str | None:
         return None
 
     def get_module_path(self, file_path: str) -> str:
@@ -37,7 +37,7 @@ class RubyLanguageStrategy(LanguageStrategy):
         """Removes private/protected keywords if they appear before a method."""
         return re.sub(r'^\s*(private|protected|public)\s*$', '', content, flags=re.MULTILINE)
 
-    def find_symbol_range(self, lines: List[str], symbol: str) -> Tuple[Optional[int], Optional[int]]:
+    def find_symbol_range(self, lines: list[str], symbol: str) -> tuple[int | None, int | None]:
         """Finds the range using 'end' keyword matching."""
         # Pattern for class, module or def
         pattern = re.compile(rf"^\s*(class|module|def)\s+{re.escape(symbol)}\b")
@@ -97,7 +97,7 @@ class RubyLanguageStrategy(LanguageStrategy):
         # Simplified: assumes package is the file name to require
         return f"require '{package}'"
 
-    def find_variables(self, text: str) -> Set[str]:
+    def find_variables(self, text: str) -> set[str]:
         keywords = {
             "BEGIN", "END", "alias", "and", "begin", "break", "case", "class", "def", "defined?", "do", "else", "elsif", "end", "ensure", "false", "for", "if", "in", "module", "next", "nil", "not", "or", "redo", "rescue", "retry", "return", "self", "super", "then", "true", "undef", "unless", "until", "when", "while", "yield"
         }
@@ -109,7 +109,7 @@ class RubyLanguageStrategy(LanguageStrategy):
         # Look for assignment: var = ...
         return re.search(rf"\b{var_name}\s*=", context_text) is not None
 
-    def infer_types(self, parameters: List[str], context_text: str) -> List[Tuple[str, str]]:
+    def infer_types(self, parameters: list[str], context_text: str) -> list[tuple[str, str]]:
         # Ruby is dynamically typed, so we just return 'Object' or guess from YARD comments if present
         typed = []
         for var in parameters:
@@ -117,7 +117,7 @@ class RubyLanguageStrategy(LanguageStrategy):
             typed.append((var, match.group(1) if match else "Object"))
         return typed
 
-    def get_function_template(self, name: str, params_str: str, body: List[str], scope: str, indent: str) -> str:
+    def get_function_template(self, name: str, params_str: str, body: list[str], scope: str, indent: str) -> str:
         # scope is ignored for Ruby top-level/class methods usually handled by private
         code = f"\n\n{indent}def {name}({params_str})\n"
         for line in body:

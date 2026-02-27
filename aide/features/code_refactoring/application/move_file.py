@@ -1,6 +1,6 @@
 import os
 import re
-from typing import List, Optional
+from typing import Any, Tuple, Callable, Generator
 from aide.core.domain.ports import FileSystemPort
 from aide.core.domain.models import OperationResult
 from aide.features.code_refactoring.application.update_refs import UpdateReferencesUseCase
@@ -11,7 +11,7 @@ class MoveFileUseCase:
         self.strategy_provider = strategy_provider
         self.update_refs_use_case = UpdateReferencesUseCase(file_system)
 
-    def execute(self, source_paths: List[str], dest_dir: str, root_path: str = ".", src_root: str = "app/src/main/java", dry_run: bool = False) -> OperationResult:
+    def execute(self, source_paths: list[str], dest_dir: str, root_path: str = ".", src_root: str = "app/src/main/java", dry_run: bool = False) -> OperationResult:
         files_moved = 0
         total_replacements = 0
         errors = []

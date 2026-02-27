@@ -1,6 +1,6 @@
 import os
 import re
-from typing import Dict, Any, List
+from typing import Any, Tuple, Callable, Generator
 from aide.features.code_inspection.application.find_usages import FindUsagesUseCase
 
 class FindImpactUseCase:
@@ -12,7 +12,7 @@ class FindImpactUseCase:
         self.strategy_provider = strategy_provider
         self.find_usages = FindUsagesUseCase(file_system, language_parser)
 
-    def execute(self, symbol_name: str, source_file: str = None) -> Dict[str, Any]:
+    def execute(self, symbol_name: str, source_file: str = None) -> dict[str, Any]:
         impacted_files = set()
         impacted_tests = set()
         

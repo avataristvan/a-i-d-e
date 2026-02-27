@@ -1,6 +1,6 @@
 import re
 import os
-from typing import List, Tuple, Optional, Set
+from typing import Any, Tuple, Callable, Generator
 from aide.core.domain.ports import LanguageStrategy
 
 class ScalaLanguageStrategy(LanguageStrategy):
@@ -8,7 +8,7 @@ class ScalaLanguageStrategy(LanguageStrategy):
     Scala-specific refactoring strategy.
     Handles 'package', 'import', and bracket-based block detection.
     """
-    def extract_imports_and_header(self, lines: List[str]) -> Tuple[List[str], Optional[str]]:
+    def extract_imports_and_header(self, lines: list[str]) -> tuple[list[str], str | None]:
         """Extracts 'package' and 'import' statements."""
         imports = []
         header = None
@@ -20,7 +20,7 @@ class ScalaLanguageStrategy(LanguageStrategy):
                 imports.append(stripped)
         return imports, header
 
-    def get_package_header(self, file_path: str) -> Optional[str]:
+    def get_package_header(self, file_path: str) -> str | None:
         pkg = self.get_module_path(file_path)
         return f"package {pkg}" if pkg else None
 
@@ -40,7 +40,7 @@ class ScalaLanguageStrategy(LanguageStrategy):
         """Removes private/protected modifiers for moved symbols."""
         return re.sub(r'\b(private|protected)(\[[^\]]+\])?\s+', '', content)
 
-    def find_symbol_range(self, lines: List[str], symbol: str) -> Tuple[Optional[int], Optional[int]]:
+    def find_symbol_range(self, lines: list[str], symbol: str) -> tuple[int | None, int | None]:
         """Finds the start and end lines of a Scala symbol using bracket matching."""
         # Matches: class/object/trait/def [modifiers] SymbolName
         pattern = re.compile(rf"\b(class|object|trait|def|type|val|var)\s+{re.escape(symbol)}\b")
@@ -95,7 +95,7 @@ class ScalaLanguageStrategy(LanguageStrategy):
         pkg_name = package.replace("package ", "").strip()
         return f"import {pkg_name}.{symbol}"
 
-    def find_variables(self, text: str) -> Set[str]:
+    def find_variables(self, text: str) -> set[str]:
         keywords = {
             "abstract", "case", "catch", "class", "def", "do", "else", "extends", "false", "final", "finally", "for", "forSome", "if", "implicit", "import", "lazy", "match", "new", "null", "object", "override", "package", "private", "protected", "return", "sealed", "super", "this", "throw", "trait", "true", "try", "type", "val", "var", "while", "with", "yield"
         }
@@ -112,7 +112,7 @@ class ScalaLanguageStrategy(LanguageStrategy):
         ]
         return any(re.search(p, context_text) for p in patterns)
 
-    def infer_types(self, parameters: List[str], context_text: str) -> List[Tuple[str, str]]:
+    def infer_types(self, parameters: list[str], context_text: str) -> list[tuple[str, str]]:
         typed = []
         for var in parameters:
             # Match "var: Type"
@@ -120,7 +120,7 @@ class ScalaLanguageStrategy(LanguageStrategy):
             typed.append((var, match.group(1).strip() if match else "Any"))
         return typed
 
-    def get_function_template(self, name: str, params_str: str, body: List[str], scope: str, indent: str) -> str:
+    def get_function_template(self, name: str, params_str: str, body: list[str], scope: str, indent: str) -> str:
         # scope is ignored for now as Scala uses private/protected keywords handled in adjust_visibility
         code = f"\n\n{indent}def {name}({params_str}): Unit = {{\n"
         for line in body:

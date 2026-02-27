@@ -1,5 +1,5 @@
 import re
-from typing import Dict, Any, List
+from typing import Any, Tuple, Callable, Generator
 import os
 
 class AuditFixturesUseCase:
@@ -8,7 +8,7 @@ class AuditFixturesUseCase:
     def __init__(self, file_system):
         self.file_system = file_system
         
-    def execute(self, tests_dir: str, format: str = "json") -> Dict[str, Any]:
+    def execute(self, tests_dir: str, format: str = "json") -> dict[str, Any]:
         # Very simple greedy grep for fixture definitions and usage
         
         # 1. Gather all files in tests_dir

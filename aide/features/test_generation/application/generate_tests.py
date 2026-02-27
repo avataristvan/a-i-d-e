@@ -7,7 +7,7 @@ class GenerateTestsUseCase:
         self.language_parser = language_parser
         self.strategy_provider = strategy_provider
 
-    def execute(self, file_path: str, symbol_name: str, output_format: str = "json") -> Optional[str]:
+    def execute(self, file_path: str, symbol_name: str, output_format: str = "json") -> str | None:
         try:
             content = self.file_system.read_file(file_path)
             lines = content.splitlines()
@@ -32,7 +32,7 @@ class GenerateTestsUseCase:
             ext = os.path.splitext(file_path)[1].lower()
             
             # Build the context object
-            context_data: Dict[str, Any] = {
+            context_data: dict[str, Any] = {
                 "language_extension": ext,
                 "target_symbol": symbol_name,
                 "file_path": file_path,
@@ -52,7 +52,7 @@ class GenerateTestsUseCase:
         except Exception as e:
             return None
 
-    def _format_markdown(self, data: Dict[str, Any]) -> str:
+    def _format_markdown(self, data: dict[str, Any]) -> str:
         md = f"# Context for `{data['target_symbol']}`\n\n"
         md += f"**File:** `{data['file_path']}`\n"
         md += f"**Module:** `{data['module_path']}`\n\n"

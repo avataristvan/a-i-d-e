@@ -8,11 +8,11 @@ class Context:
     """Dependency Injection Container for AIDE plugins."""
     
     def __init__(self, 
-                 file_system: Optional[FileSystemPort] = None, 
-                 language_parser: Optional[LanguageParserPort] = None,
-                 strategy_provider: Optional[StrategyProvider] = None):
+                 file_system: FileSystemPort | None = None, 
+                 language_parser: LanguageParserPort | None = None,
+                 strategy_provider: StrategyProvider | None = None):
         
-        self._services: Dict[Type, Any] = {}
+        self._services: dict[Type, Any] = {}
         
         # Backward compatibility registration for existing systems
         if file_system:

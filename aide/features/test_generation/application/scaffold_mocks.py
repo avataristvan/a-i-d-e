@@ -8,7 +8,7 @@ class ScaffoldMocksUseCase:
         self.language_parser = language_parser
         self.strategy_provider = strategy_provider
 
-    def execute(self, file_path: str, class_name: str, output_format: str = "json") -> Optional[str]:
+    def execute(self, file_path: str, class_name: str, output_format: str = "json") -> str | None:
         try:
             content = self.file_system.read_file(file_path)
             lines = content.splitlines()
@@ -32,7 +32,7 @@ class ScaffoldMocksUseCase:
             for dep_name, dep_type in dependencies.items():
                 mock_scaffolds.append(self._generate_mock_class(dep_name, dep_type, file_path))
                 
-            context_data: Dict[str, Any] = {
+            context_data: dict[str, Any] = {
                 "target_class": class_name,
                 "file_path": file_path,
                 "dependencies_found": len(dependencies),
@@ -49,7 +49,7 @@ class ScaffoldMocksUseCase:
         except Exception as e:
             return None
 
-    def _extract_dependencies(self, class_code: str, class_name: str, file_path: str) -> Dict[str, str]:
+    def _extract_dependencies(self, class_code: str, class_name: str, file_path: str) -> dict[str, str]:
         deps = {}
         if file_path.endswith(".py"):
             # Look for __init__(self, arg1: Type, arg2=...)
@@ -100,7 +100,7 @@ class ScaffoldMocksUseCase:
         else:
             return f"class {mock_name} {{\n}}\n"
 
-    def _format_markdown(self, data: Dict[str, Any]) -> str:
+    def _format_markdown(self, data: dict[str, Any]) -> str:
         md = f"# Mocks for `{data['target_class']}`\n\n"
         md += f"**File:** `{data['file_path']}`\n"
         md += f"**Dependencies Detected:** {data['dependencies_found']}\n\n"

@@ -7,15 +7,15 @@ name = "aide-cli"
 version = "0.1.0"
 description = "Agent Interface for Deterministic Editing - A deterministic refactoring CLI for AI agents."
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.12"
 license = {file = "LICENSE"}
 authors = [
   {name = "AIDE Contributors"}
 ]
 dependencies = [
-  "tree-sitter>=0.23.0",
-  "tree-sitter-c-sharp>=0.23.0",
-  "tree-sitter-rust>=0.23.0"
+  "tree-sitter==0.23.2",
+  "tree-sitter-c-sharp==0.23.1",
+  "tree-sitter-rust==0.23.2"
 ]
 
 [project.optional-dependencies]

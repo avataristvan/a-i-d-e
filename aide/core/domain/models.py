@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import List
+from typing import Any, Tuple, Callable, Generator
 
 @dataclass
 class TextReplacement:
@@ -9,7 +9,7 @@ class TextReplacement:
 @dataclass
 class FileChange:
     file_path: str
-    replacements: List[TextReplacement]
+    replacements: list[TextReplacement]
     
     @property
     def change_count(self) -> int:

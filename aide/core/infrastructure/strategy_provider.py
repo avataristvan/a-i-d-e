@@ -12,7 +12,7 @@ from aide.parsing.infrastructure.ruby_strategy import RubyLanguageStrategy
 
 class StrategyProvider:
     def __init__(self):
-        self._strategies: Dict[str, LanguageStrategy] = {}
+        self._strategies: dict[str, LanguageStrategy] = {}
         
         # Default Strategies
         kotlin = KotlinLanguageStrategy()

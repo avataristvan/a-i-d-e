@@ -1,6 +1,6 @@
 import re
 import os
-from typing import List, Tuple, Optional, Set
+from typing import Any, Tuple, Callable, Generator
 from aide.core.domain.ports import LanguageStrategy
 
 class GoLanguageStrategy(LanguageStrategy):
@@ -8,7 +8,7 @@ class GoLanguageStrategy(LanguageStrategy):
     Go-specific refactoring strategy.
     Handles 'package', 'import', and bracket-based block detection.
     """
-    def extract_imports_and_header(self, lines: List[str]) -> Tuple[List[str], Optional[str]]:
+    def extract_imports_and_header(self, lines: list[str]) -> tuple[list[str], str | None]:
         """Extracts 'package' and 'import' statements."""
         imports = []
         header = None
@@ -30,7 +30,7 @@ class GoLanguageStrategy(LanguageStrategy):
                 
         return imports, header
 
-    def get_package_header(self, file_path: str) -> Optional[str]:
+    def get_package_header(self, file_path: str) -> str | None:
         pkg = self.get_module_path(file_path)
         # In Go, the package name is usually the directory name.
         pkg_name = pkg.split("/")[-1] if pkg else "main"
@@ -52,7 +52,7 @@ class GoLanguageStrategy(LanguageStrategy):
 
         return re.sub(r'\b(func|type|struct|interface|const|var)\s+([a-z][a-zA-Z0-9_]*)\b', capitalize, content)
 
-    def find_symbol_range(self, lines: List[str], symbol: str) -> Tuple[Optional[int], Optional[int]]:
+    def find_symbol_range(self, lines: list[str], symbol: str) -> tuple[int | None, int | None]:
         """Finds the start and end lines of a Go symbol using bracket matching."""
         # Matches: func [receiver] SymbolName(...)
         # Or type SymbolName ...
@@ -117,7 +117,7 @@ class GoLanguageStrategy(LanguageStrategy):
         # Go usually imports by package path, and then uses PackageName.Symbol
         return f'import "{package}"'
 
-    def find_variables(self, text: str) -> Set[str]:
+    def find_variables(self, text: str) -> set[str]:
         keywords = {
             "break", "default", "func", "interface", "select", "case", "defer", "go", "map", "struct", "chan", "else", "goto", "package", "switch", "const", "fallthrough", "if", "range", "type", "continue", "for", "import", "return", "var", "nil", "true", "false", "iota", "make", "new", "len", "cap", "append", "copy", "close", "delete", "complex", "real", "imag", "panic", "recover", "print", "println"
         }
@@ -133,7 +133,7 @@ class GoLanguageStrategy(LanguageStrategy):
         ]
         return any(re.search(p, context_text) for p in patterns)
 
-    def infer_types(self, parameters: List[str], context_text: str) -> List[Tuple[str, str]]:
+    def infer_types(self, parameters: list[str], context_text: str) -> list[tuple[str, str]]:
         typed = []
         for var in parameters:
             # Match "var Type"
@@ -141,7 +141,7 @@ class GoLanguageStrategy(LanguageStrategy):
             typed.append((var, match.group(1).strip() if match else "interface{}"))
         return typed
 
-    def get_function_template(self, name: str, params_str: str, body: List[str], scope: str, indent: str) -> str:
+    def get_function_template(self, name: str, params_str: str, body: list[str], scope: str, indent: str) -> str:
         actual_name = f"{name[0].upper()}{name[1:]}" if scope in {"public", "internal"} else name
         code = f"\n\n{indent}func {actual_name}({params_str}) {{\n"
         for line in body:

@@ -1,6 +1,6 @@
 import re
 import os
-from typing import List, Tuple, Optional, Set
+from typing import Any, Tuple, Callable, Generator
 from aide.core.domain.ports import LanguageStrategy
 
 class CSharpLanguageStrategy(LanguageStrategy):
@@ -9,7 +9,7 @@ class CSharpLanguageStrategy(LanguageStrategy):
         # C# is explicit, changing `public` to `private` requires AST or complex regex
         return content
 
-    def extract_imports_and_header(self, lines: List[str]) -> Tuple[List[str], str]:
+    def extract_imports_and_header(self, lines: list[str]) -> tuple[list[str], str]:
         imports = []
         header = []
         for line in lines:
@@ -24,7 +24,7 @@ class CSharpLanguageStrategy(LanguageStrategy):
         
         return imports, "\n".join(header)
 
-    def find_symbol_range(self, lines: List[str], symbol: str) -> Tuple[Optional[int], Optional[int]]:
+    def find_symbol_range(self, lines: list[str], symbol: str) -> tuple[int | None, int | None]:
         """
         Extremely naive brace counting to find a symbol block.
         Real AST-based splicing belongs in a future `AstSplicer` port.
@@ -87,7 +87,7 @@ class CSharpLanguageStrategy(LanguageStrategy):
         """
         return f"using {module_path};"
 
-    def get_package_header(self, file_path: str) -> Optional[str]:
+    def get_package_header(self, file_path: str) -> str | None:
         try:
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
@@ -99,7 +99,7 @@ class CSharpLanguageStrategy(LanguageStrategy):
             pass
         return None
 
-    def find_variables(self, text: str) -> Set[str]:
+    def find_variables(self, text: str) -> set[str]:
         # C# keywords
         keywords = {"var", "int", "string", "bool", "double", "float", "long", "byte", "char", "decimal", "object", "dynamic", "if", "else", "for", "foreach", "while", "return", "new", "this", "base", "true", "false", "null", "class", "struct", "interface", "enum", "namespace", "using", "public", "private", "protected", "internal", "static", "readonly", "volatile", "const", "async", "await", "yield", "params", "ref", "out", "in"}
         matches = re.findall(r'\b[a-z_][a-zA-Z0-9_]*\b', text)
@@ -109,7 +109,7 @@ class CSharpLanguageStrategy(LanguageStrategy):
         patterns = [rf"\b(?:var|int|string|bool|double|float|long|byte|char|decimal|object|dynamic|\w+)\s+{var_name}\b", rf"\b{var_name}\s*="]
         return any(re.search(p, context_text) for p in patterns)
 
-    def infer_types(self, parameters: List[str], context_text: str) -> List[Tuple[str, str]]:
+    def infer_types(self, parameters: list[str], context_text: str) -> list[tuple[str, str]]:
         typed = []
         for var in parameters:
             # Match "Type var" or "Type var ="
@@ -117,7 +117,7 @@ class CSharpLanguageStrategy(LanguageStrategy):
             typed.append((var, match.group(1) if match else "object"))
         return typed
 
-    def get_function_template(self, name: str, params_str: str, body: List[str], scope: str, indent: str) -> str:
+    def get_function_template(self, name: str, params_str: str, body: list[str], scope: str, indent: str) -> str:
         # Map scope to C# access modifiers
         modifier = "private" if scope == "private" else "public"
         # We assume `void` for now as type inference is limited
