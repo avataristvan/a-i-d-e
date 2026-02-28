@@ -78,24 +78,17 @@ if __name__ == "__main__":
         print(f"\n⚠️  Warning: {bin_dir} is not in your PATH.")
         print("Add this to your shell config (e.g., .bashrc or .zshrc):")
         print(f'export PATH="$HOME/.local/bin:$PATH"')
-    else:
-        print(f"\n✅ AIDE installed successfully! Try running 'aide --help'.")
-
-    # 6. Post-Install Instructions
+    # 5. Success Message
     print("\n" + "="*50)
-    print("🚀 NEXT STEPS FOR AGENTIC ENLIGHTENMENT")
+    print("✅ AIDE INSTALLED SUCCESSFULLY")
     print("="*50)
-    print("\n1. NATIVE GEMINI EXTENSION (Best for First-Class Tooling)")
-    print("   Create a native extension for Gemini by running:")
+    print("\n🚀 NATIVE GEMINI EXTENSION (Recommended)")
+    print("   Register AIDE natively in Gemini by running:")
     print(f"   mkdir -p ~/.gemini/extensions/aide-extension")
-    print(f"   cp {os.path.join(install_dir, 'gemini-extension.json')} ~/.gemini/extensions/aide-extension/")
+    print(f"   cp {dst_ext} ~/.gemini/extensions/aide-extension/")
     
-    print("\n2. GEMINI TOOLING (@aide)")
-    print("   To enable @aide as a first-class tool, add the contents of")
-    print("   'setup-files/global-aide/SKILL.md' to your Gemini Global Memory.")
-    
-    print("\n3. PROJECT INJECTION")
-    print("   For project-local use, use 'setup-files/project-injection/SKILL.md'.")
+    print("\n💡 NOTE: Manual 'memory rules' (SKILL.md) are NOT needed")
+    print("   when using the native extension.")
     print("="*50 + "\n")
 
 if __name__ == "__main__":

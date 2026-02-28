@@ -32,9 +32,13 @@ python3 a-i-d-e/check-aide.py
 ```
 
 ### Agent Integration (@aide)
-To enable the `@aide` syntax and deterministic refactoring in Gemini, copy the contents of the relevant `SKILL.md` (from `skills/global-aide/` or `skills/project-injection/`) into your **Gemini Global Memory** or **Custom Instructions**.
+To enable the `@aide` syntax and deterministic refactoring in Gemini:
 
-For a more robust, "First-Class" native extension integration using `gemini-extension.json`, see the [Setup Guide](./docs/setup-first-class-for-gemini.md).
+1.  **Run the Installer**: `python3 scripts/install_global.py`
+2.  **Register Natively**: Create `~/.gemini/extensions/aide-extension/gemini-extension.json` using the template at `~/.local/share/aide/gemini-extension.json`.
+3.  **Restart Gemini**: The tool will then be recognized as a first-class `@aide` extension.
+
+For detailed steps, see the [Setup Guide](./docs/setup-first-class-for-gemini.md).
 
 ## Core Capabilities
 
