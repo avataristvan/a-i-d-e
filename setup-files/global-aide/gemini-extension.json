@@ -1,0 +1,282 @@
+{
+    "name": "aide",
+    "version": "1.0.0",
+    "description": "Agent Interface for Deterministic Editing - Global surgical tool for safe refactoring.",
+    "author": "AIDE Contributors",
+    "entrypoint": {
+        "command": "aide",
+        "args": [
+            "--root",
+            "${workspaceRoot}"
+        ],
+        "env": {
+            "AIDE_GLOBAL": "true"
+        }
+    },
+    "capabilities": {
+        "commands": [
+            {
+                "name": "outline",
+                "description": "Structural symbol discovery (classes, methods, symbols).",
+                "parameters": {
+                    "pattern": {
+                        "type": "string",
+                        "description": "Glob pattern for files (e.g., src/**/*.py)."
+                    }
+                }
+            },
+            {
+                "name": "read",
+                "description": "Line-numbered file retrieval for precise context.",
+                "parameters": {
+                    "file": {
+                        "type": "string",
+                        "description": "Path to the file."
+                    },
+                    "selection": {
+                        "type": "string",
+                        "description": "Optional line range 'start:end' (e.g., 10:20)."
+                    }
+                }
+            },
+            {
+                "name": "cleanup",
+                "description": "Automated code hygiene (e.g., unused import removal).",
+                "parameters": {
+                    "path": {
+                        "type": "string",
+                        "description": "Directory to clean (default: .)."
+                    }
+                }
+            },
+            {
+                "name": "audit",
+                "description": "Architecture validation against stack-specific rules.",
+                "parameters": {
+                    "stack": {
+                        "type": "string",
+                        "enum": [
+                            "kotlin",
+                            "nextjs"
+                        ],
+                        "description": "The tech stack to audit."
+                    },
+                    "src": {
+                        "type": "string",
+                        "description": "Source directory."
+                    }
+                }
+            },
+            {
+                "name": "move-package",
+                "description": "Refactor: Move a package and update all references.",
+                "parameters": {
+                    "src": {
+                        "type": "string",
+                        "description": "Source package path."
+                    },
+                    "dest_package": {
+                        "type": "string",
+                        "description": "Target package name."
+                    },
+                    "root": {
+                        "type": "string",
+                        "description": "Custom project root."
+                    },
+                    "verify": {
+                        "type": "boolean",
+                        "default": true,
+                        "description": "Auto-rollback if tests fail."
+                    }
+                }
+            },
+            {
+                "name": "extract",
+                "description": "Refactor: Extract code block to new function.",
+                "parameters": {
+                    "file": {
+                        "type": "string"
+                    },
+                    "selection": {
+                        "type": "string",
+                        "description": "Line range start:end."
+                    },
+                    "name": {
+                        "type": "string",
+                        "description": "New function name."
+                    },
+                    "verify": {
+                        "type": "boolean",
+                        "default": true
+                    }
+                }
+            },
+            {
+                "name": "usages",
+                "description": "Inspection: Find semantic symbol usages.",
+                "parameters": {
+                    "symbol": {
+                        "type": "string"
+                    },
+                    "root": {
+                        "type": "string"
+                    }
+                }
+            },
+            {
+                "name": "find-impact",
+                "description": "Inspection: Analyze which files and tests are impacted by a change.",
+                "parameters": {
+                    "symbol": {
+                        "type": "string"
+                    },
+                    "root": {
+                        "type": "string"
+                    }
+                }
+            },
+            {
+                "name": "change-signature",
+                "description": "Refactor: Update function signature and call sites.",
+                "parameters": {
+                    "symbol": {
+                        "type": "string"
+                    },
+                    "add-param": {
+                        "type": "string",
+                        "description": "e.g., x: Int"
+                    },
+                    "default-value": {
+                        "type": "string"
+                    },
+                    "verify": {
+                        "type": "boolean",
+                        "default": true
+                    }
+                }
+            },
+            {
+                "name": "move-symbol",
+                "description": "Refactor: Move top-level symbol to another file.",
+                "parameters": {
+                    "symbol": {
+                        "type": "string"
+                    },
+                    "source": {
+                        "type": "string"
+                    },
+                    "dest": {
+                        "type": "string"
+                    },
+                    "verify": {
+                        "type": "boolean",
+                        "default": true
+                    }
+                }
+            },
+            {
+                "name": "rename-symbol",
+                "description": "Refactor: Rename symbol project-wide safely.",
+                "parameters": {
+                    "old": {
+                        "type": "string"
+                    },
+                    "new": {
+                        "type": "string"
+                    },
+                    "root": {
+                        "type": "string"
+                    },
+                    "verify": {
+                        "type": "boolean",
+                        "default": true
+                    }
+                }
+            },
+            {
+                "name": "scaffold-feature",
+                "description": "Generation: Scaffold Clean Architecture boilerplate.",
+                "parameters": {
+                    "name": {
+                        "type": "string",
+                        "description": "Feature name."
+                    },
+                    "stack": {
+                        "type": "string",
+                        "enum": [
+                            "kotlin",
+                            "python"
+                        ]
+                    }
+                }
+            },
+            {
+                "name": "implement-interface",
+                "description": "Generation: Inject missing interface methods into a class.",
+                "parameters": {
+                    "file": {
+                        "type": "string"
+                    },
+                    "class-name": {
+                        "type": "string"
+                    },
+                    "implements": {
+                        "type": "string"
+                    }
+                }
+            },
+            {
+                "name": "project-dto",
+                "description": "Generation: Create DTO and mapping from Domain Entity.",
+                "parameters": {
+                    "source-file": {
+                        "type": "string"
+                    },
+                    "entity": {
+                        "type": "string"
+                    },
+                    "target-file": {
+                        "type": "string"
+                    },
+                    "dto": {
+                        "type": "string"
+                    },
+                    "stack": {
+                        "type": "string",
+                        "enum": [
+                            "kotlin",
+                            "python"
+                        ]
+                    }
+                }
+            },
+            {
+                "name": "test",
+                "description": "Execution: Run tests and return structured JSON.",
+                "parameters": {
+                    "path": {
+                        "type": "string",
+                        "description": "Test directory."
+                    },
+                    "format": {
+                        "type": "string",
+                        "default": "json"
+                    }
+                }
+            },
+            {
+                "name": "test-audit",
+                "description": "Execution: Identify missing line coverage.",
+                "parameters": {
+                    "src": {
+                        "type": "string"
+                    },
+                    "tests": {
+                        "type": "string"
+                    }
+                }
+            }
+        ]
+    },
+    "skill_source": "file://~/.local/share/aide/SKILL.md"
+}

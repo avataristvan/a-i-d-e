@@ -5,26 +5,36 @@ AIDE is a specialized CLI tool designed to empower AI Agents with deterministic 
 
 ## Navigator's Guide (Quick Setup)
 
-AIDE is designed for zero-friction integration. Follow the **3-Step Setup** to empower your project:
+AIDE is designed for zero-friction integration. Choose the best setup for your environment:
 
-1.  **Drop the folder**: Clone or copy the `a-i-d-e/` directory into your project root.
-2.  **Authorize**: Ensure the engine is executable:
-    ```bash
-    chmod +x a-i-d-e/aide.py
-    ```
-3.  **Instruct**: Activate the **Orchestrator** by copying the preset:
-    ```bash
-    mkdir -p .agent/rules
-    cp a-i-d-e/rule-presets/use-aide-host.md .agent/rules/
-    ```
+### Setup Options
+
+#### Option A: Global Installation (Recommended)
+Make AIDE available as a first-class tool across all your workspaces. This allows agents to use `@aide` from anywhere.
+```bash
+python3 scripts/install_global.py
+```
+This installs AIDE to `~/.local/share/aide` and creates a global `aide` shim in `~/.local/bin`. After installation, register the **Global Skill** by adding [skills/global-aide/SKILL.md](./skills/global-aide/SKILL.md) to your agent's memory.
+
+#### Option B: Project-Local
+Clone or copy the `a-i-d-e/` directory into your project root.
+1.  **Authorize**: `chmod +x a-i-d-e/aide.py`
+2.  **Instruct**: Activate the **Orchestrator** by adding [skills/project-injection/SKILL.md](./skills/project-injection/SKILL.md) to your project rules.
 
 ### Verify Installation
 Run the health check to ensure everything is ready:
 ```bash
+# For Global
+aide --help
+
+# For Project-Local
 python3 a-i-d-e/check-aide.py
 ```
 
-Once complete, any AI agent interacting with your repository will recognize the `a-i-d-e` capabilities via the `SKILL.md` file.
+### Agent Integration (@aide)
+To enable the `@aide` syntax and deterministic refactoring in Gemini, copy the contents of the relevant `SKILL.md` (from `skills/global-aide/` or `skills/project-injection/`) into your **Gemini Global Memory** or **Custom Instructions**.
+
+For a more robust, "First-Class" native extension integration using `gemini-extension.json`, see the [Setup Guide](./docs/setup-first-class-for-gemini.md).
 
 ## Core Capabilities
 

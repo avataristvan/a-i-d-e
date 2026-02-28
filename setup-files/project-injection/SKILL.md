@@ -170,12 +170,6 @@ Test Execution: Runs test suite with coverage and emits structured mapping of ex
 - `-n`, `--dry-run`: Preview all changes (file writes, renames, reference updates) without applying them.
 - `--verify`: Automatically run tests after refactoring (`move-package`, `extract`, `extract-interface`, `change-signature`, `move-symbol`, `rename-symbol`). If tests fail, it instantly auto-reverts all file system changes back to exactly how they were.
 
-## External Brain (Local Sidecar)
-
-In addition to the deterministic `a-i-d-e` CLI, you have access to a local reasoning engine via the `lmstudio:ask_local_model` tool. **Always run `lmstudio:verify_local_model` first** to confirm availability and credentials. If available, use it for complex code drafting, "second opinions", or summarizing large files to support your deterministic work with AIDE.
-- **Purpose**: draft complex logic, validate syntax, or summarize large files before using AIDE refactoring tools.
-- **Note**: AIDE is the "Scalpel" (structural), LM Studio is your "Assistant" (reasoning).
-
 ## Extension
 Plugin-based. Features in `a-i-d-e/aide/features/`. Each requires `plugin.py`.
 ## Usage Patterns
