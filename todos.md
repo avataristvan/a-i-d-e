@@ -14,5 +14,8 @@ Native support for Google Gemini (Flash) and OpenAI-compatible providers (LM Stu
 4. **Persistent Project Settings** - [SOLVED]
 Automatic `.env` loading allows project-local configuration of API keys and sub-agent rules.
 
+5. **Robust Refactoring Verification & Kotlin Support** - [SOLVED]
+Fixed aggressive test rollbacks, improved test verification error handling, and added native support for `gradle test` to verify Kotlin refactoring.
+
 ## Future Vision
 Next mission: Deepen AST support for C# and Rust to match the level of precision we have for Python and Kotlin.

@@ -151,20 +151,32 @@ class OsFileSystem(FileSystemPort):
         if not self._in_transaction:
             return
 
-        # 1. Reverse directory moves
-        for src, dst in reversed(self._moved_dirs):
-            if os.path.exists(dst):
-                shutil.move(dst, src)
-
-        # 2. Restore files (or delete if they were newly created)
+        # 1. Restore files (or delete if they were newly created)
+        # We do this before reversing directory moves so that modified files in moved directories
+        # are restored at their moved locations and then moved back with the directory.
         for path, content in self._backups.items():
             if content is None:
                 if os.path.exists(path):
-                    os.remove(path)
+                    if os.path.isfile(path):
+                        os.remove(path)
             else:
                 os.makedirs(os.path.dirname(path), exist_ok=True)
                 with open(path, 'w', encoding='utf-8') as f:
                     f.write(content)
+
+        # 2. Reverse directory moves
+        for src, dst in reversed(self._moved_dirs):
+            if os.path.exists(dst):
+                if os.path.exists(src):
+                    # If the source directory was recreated (e.g. by delete_empty_parents or file restoration)
+                    # we merge or remove it before moving back.
+                    if os.path.isdir(src) and not os.listdir(src):
+                        os.rmdir(src)
+                    else:
+                        # Conflict! For now, shutil.move might fail or overwrite.
+                        pass
+                os.makedirs(os.path.dirname(src), exist_ok=True)
+                shutil.move(dst, src)
 
         # 3. Cleanup created empty directories
         # Sort descending by length to delete deepest first

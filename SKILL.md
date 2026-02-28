@@ -40,7 +40,7 @@ Architecture validation.
   - **Ghost Cleanup**: Automatically deletes empty parent directories after moving packages.
   - **Android/Gradle**: Automatically updates the `namespace` property in `build.gradle.kts`.
   - **Verification**: Use `--verify` to auto-rollback if the build fails after a move.
-- **Invoke**: `./a-i-d-e/aide.py move-package <src> <dest_package> [--root <p>] [--java-root <p>] [-n] [--verify]`
+- **Invoke**: `./a-i-d-e/aide.py move-package <src> <dest_package> [--root <p>] [--src-root <p>] [-n] [--verify]`
 
 ### `extract`
 Refactor: Extract code block to function.

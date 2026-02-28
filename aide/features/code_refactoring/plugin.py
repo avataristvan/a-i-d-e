@@ -92,21 +92,14 @@ class RefactorPlugin:
         use_case = MoveFileUseCase(context.file_system, context.strategy_provider)
         res = use_case.execute(sources, args.dest_dir, args.root, args.src_root, dry_run=args.dry_run)
         
-        if res.success and getattr(args, "verify", False) and not args.dry_run:
-            from aide.features.testing_execution.application.execute_tests import ExecuteTestsUseCase
-            test_use_case = ExecuteTestsUseCase(context.file_system)
-            test_res = test_use_case.execute(args.root)
-            if not test_res.get("success", False):
-                context.file_system.rollback()
-                res.success = False
-                res.message = "Tests failed. Changes reverted."
-                reverted = True
-            else:
-                context.file_system.commit()
+        if res.success:
+            success, reverted, msg = self._verify_and_commit(args, context, args.root)
+            res.success = success
+            if msg: res.message = msg
         
         result = {
             "success": res.success,
-            "message": "Preview (No changes made)" if args.dry_run and res.success else "Success" if res.success else res.message,
+            "message": "Preview (No changes made)" if args.dry_run and res.success else res.message if res.message and res.message != "Success" else "Success" if res.success else "Move failed.",
             "data": {
                 "files_moved": res.files_changed,
                 "total_replacements": res.total_replacements,
@@ -126,21 +119,14 @@ class RefactorPlugin:
         use_case = UpdateReferencesUseCase(context.file_system)
         res = use_case.execute(args.root, args.old_fqdn, args.new_fqdn, dry_run=args.dry_run)
         
-        if res.success and getattr(args, "verify", False) and not args.dry_run:
-            from aide.features.testing_execution.application.execute_tests import ExecuteTestsUseCase
-            test_use_case = ExecuteTestsUseCase(context.file_system)
-            test_res = test_use_case.execute(args.root)
-            if not test_res.get("success", False):
-                context.file_system.rollback()
-                res.success = False
-                res.message = "Tests failed. Changes reverted."
-                reverted = True
-            else:
-                context.file_system.commit()
+        if res.success:
+            success, reverted, msg = self._verify_and_commit(args, context, args.root)
+            res.success = success
+            if msg: res.message = msg
         
         result = {
             "success": res.success,
-            "message": "Preview (No changes made)" if args.dry_run and res.success else "Success" if res.success else res.message,
+            "message": "Preview (No changes made)" if args.dry_run and res.success else res.message if res.message and res.message != "Success" else "Success" if res.success else "Update failed.",
             "data": {
                 "files_changed": res.files_changed,
                 "total_replacements": res.total_replacements,
@@ -160,20 +146,14 @@ class RefactorPlugin:
         use_case = ExtractInterfaceUseCase(context.file_system, context.language_parser, context.strategy_provider)
         success = use_case.execute(args.file, args.class_name, args.interface_name, dry_run=args.dry_run)
         
-        if success and getattr(args, "verify", False) and not args.dry_run:
-            from aide.features.testing_execution.application.execute_tests import ExecuteTestsUseCase
-            test_use_case = ExecuteTestsUseCase(context.file_system)
-            test_res = test_use_case.execute(args.root_path if hasattr(args, "root_path") else ".")
-            if not test_res.get("success", False):
-                context.file_system.rollback()
-                success = False
-                reverted = True
-            else:
-                context.file_system.commit()
-        
+        message = None
+        if success:
+            success, reverted, msg = self._verify_and_commit(args, context, args.root_path if hasattr(args, "root_path") else ".")
+            message = msg
+
         result = {
             "success": success,
-            "message": "Interface extraction complete." if success else "Interface extraction failed.",
+            "message": message if message else "Interface extraction complete." if success and not reverted else "Interface extraction failed.",
             "data": {
                 "file": args.file,
                 "class_name": args.class_name,
@@ -193,21 +173,14 @@ class RefactorPlugin:
         use_case = SmartRenameUseCase(context.file_system)
         res = use_case.execute(args.root, args.old_symbol, args.new_symbol, use_word_boundary=True, dry_run=args.dry_run)
         
-        if res.success and getattr(args, "verify", False) and not args.dry_run:
-            from aide.features.testing_execution.application.execute_tests import ExecuteTestsUseCase
-            test_use_case = ExecuteTestsUseCase(context.file_system)
-            test_res = test_use_case.execute(args.root)
-            if not test_res.get("success", False):
-                context.file_system.rollback()
-                res.success = False
-                res.message = "Tests failed. Changes reverted."
-                reverted = True
-            else:
-                context.file_system.commit()
+        if res.success:
+            success, reverted, msg = self._verify_and_commit(args, context, args.root)
+            res.success = success
+            if msg: res.message = msg
         
         result = {
             "success": res.success,
-            "message": "Preview (No changes made)" if args.dry_run and res.success else "Success" if res.success else res.message,
+            "message": "Preview (No changes made)" if args.dry_run and res.success else res.message if res.message and res.message != "Success" else "Success" if res.success else "Rename failed.",
             "data": {
                 "files_changed": res.files_changed,
                 "total_replacements": res.total_replacements,
@@ -218,10 +191,33 @@ class RefactorPlugin:
         }
         print(json.dumps(result, indent=2))
 
+    def _verify_and_commit(self, args, context: Context, root_path: str):
+        if not getattr(args, "verify", False) or args.dry_run:
+            return True, False, None
+
+        from aide.features.testing_execution.application.execute_tests import ExecuteTestsUseCase
+        test_use_case = ExecuteTestsUseCase(context.file_system)
+        test_res = test_use_case.execute(root_path)
+
+        if not test_res.get("success", False):
+            if test_res.get("is_implemented", True):
+                context.file_system.rollback()
+                return False, True, f"Tests failed: {test_res.get('summary', 'Unknown error')}"
+            else:
+                # Test runner not found, don't rollback
+                context.file_system.commit()
+                return True, False, f"Refactoring complete, but verification was skipped: {test_res.get('summary')}"
+        else:
+            context.file_system.commit()
+            return True, False, None
+
     def handle_move_package(self, args, context: Context):
-        src_path = os.path.abspath(os.path.join(args.root, args.src))
         src_root = os.path.abspath(os.path.join(args.root, args.src_root))
-        
+        # Try relative to src-root first, fallback to root
+        src_path = os.path.abspath(os.path.join(src_root, args.src))
+        if not os.path.exists(src_path):
+             src_path = os.path.abspath(os.path.join(args.root, args.src))
+
         if not os.path.exists(src_path):
             print(json.dumps({"success": False, "error": f"Source path does not exist: {src_path}"}))
             return
@@ -231,19 +227,18 @@ class RefactorPlugin:
         if rel_path.startswith(".."):
             print(json.dumps({"success": False, "error": f"Source path must be inside src-root: {src_root}"}))
             return
-            
+
         old_package = rel_path.replace(os.sep, ".")
         new_package = args.dest_package
-        
+
         reverted = False
         if getattr(args, "verify", False): context.file_system.start_transaction()
-        
+
         # Calculate destination path (assume standard dot-to-slash mapping)
         dest_rel_path = new_package.replace(".", os.sep)
         dest_path = os.path.join(src_root, dest_rel_path)
-        
+
         # Move files
-        moved_success = True
         try:
             if not args.dry_run:
                 context.file_system.move_path(src_path, dest_path)
@@ -257,21 +252,15 @@ class RefactorPlugin:
         # Smart Rename package refs
         use_case = SmartRenameUseCase(context.file_system)
         res = use_case.execute(args.root, old_package, new_package, dry_run=args.dry_run)
-        
-        if res.success and getattr(args, "verify", False) and not args.dry_run:
-            from aide.features.testing_execution.application.execute_tests import ExecuteTestsUseCase
-            test_use_case = ExecuteTestsUseCase(context.file_system)
-            test_res = test_use_case.execute(args.root)
-            if not test_res.get("success", False):
-                context.file_system.rollback()
-                res.success = False
-                reverted = True
-            else:
-                context.file_system.commit()
-        
+
+        if res.success:
+            success, reverted, msg = self._verify_and_commit(args, context, args.root)
+            res.success = success
+            if msg: res.message = msg
+
         result = {
             "success": res.success,
-            "message": "Move complete." if res.success else f"Move succeeded but reference update failed: {res.message}",
+            "message": res.message if res.message and res.message != "Success" else "Move complete." if res.success and not reverted else "Move failed.",
             "data": {
                 "old_package": old_package,
                 "new_package": new_package,
@@ -282,7 +271,6 @@ class RefactorPlugin:
             }
         }
         print(json.dumps(result, indent=2))
-
     def handle_extract(self, args, context: Context):
         from aide.features.code_refactoring.application.extract_function import ExtractFunctionUseCase
         
@@ -298,20 +286,14 @@ class RefactorPlugin:
         
         success = use_case.execute(file_path, args.selection, args.name, args.scope, dry_run=args.dry_run)
         
-        if success and getattr(args, "verify", False) and not args.dry_run:
-            from aide.features.testing_execution.application.execute_tests import ExecuteTestsUseCase
-            test_use_case = ExecuteTestsUseCase(context.file_system)
-            test_res = test_use_case.execute(".")
-            if not test_res.get("success", False):
-                context.file_system.rollback()
-                success = False
-                reverted = True
-            else:
-                context.file_system.commit()
-        
+        message = None
+        if success:
+            success, reverted, msg = self._verify_and_commit(args, context, ".")
+            message = msg
+
         result = {
             "success": success,
-            "message": "Extraction complete." if success else "Extraction failed.",
+            "message": message if message else "Extraction complete." if success and not reverted else "Extraction failed.",
             "data": {
                 "file": args.file,
                 "selection": args.selection,
@@ -331,20 +313,14 @@ class RefactorPlugin:
         use_case = ChangeSignatureUseCase(context.file_system, context.language_parser, context.strategy_provider)
         success = use_case.execute(args.root, args.symbol, args.add_param, args.default_value, dry_run=args.dry_run)
         
-        if success and getattr(args, "verify", False) and not args.dry_run:
-            from aide.features.testing_execution.application.execute_tests import ExecuteTestsUseCase
-            test_use_case = ExecuteTestsUseCase(context.file_system)
-            test_res = test_use_case.execute(args.root)
-            if not test_res.get("success", False):
-                context.file_system.rollback()
-                success = False
-                reverted = True
-            else:
-                context.file_system.commit()
-        
+        message = None
+        if success:
+            success, reverted, msg = self._verify_and_commit(args, context, args.root)
+            message = msg
+
         result = {
             "success": success,
-            "message": "Signature update complete." if success else "Signature update failed.",
+            "message": message if message else "Signature update complete." if success and not reverted else "Signature update failed.",
             "data": {
                 "symbol": args.symbol,
                 "add_param": args.add_param,
@@ -364,20 +340,14 @@ class RefactorPlugin:
         use_case = MoveSymbolUseCase(context.file_system, context.language_parser, context.strategy_provider)
         success = use_case.execute(args.source, args.symbol, args.dest, dry_run=args.dry_run, root_path=args.root)
         
-        if success and getattr(args, "verify", False) and not args.dry_run:
-            from aide.features.testing_execution.application.execute_tests import ExecuteTestsUseCase
-            test_use_case = ExecuteTestsUseCase(context.file_system)
-            test_res = test_use_case.execute(args.root)
-            if not test_res.get("success", False):
-                context.file_system.rollback()
-                success = False
-                reverted = True
-            else:
-                context.file_system.commit()
-        
+        message = None
+        if success:
+            success, reverted, msg = self._verify_and_commit(args, context, args.root)
+            message = msg
+
         result = {
             "success": success,
-            "message": "Move complete." if success else "Move failed.",
+            "message": message if message else "Move complete." if success and not reverted else "Move failed.",
             "data": {
                 "symbol": args.symbol,
                 "source": args.source,

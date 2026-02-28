@@ -19,7 +19,8 @@ class ExecuteTestsUseCase:
             payload = {
                 "success": success,
                 "summary": summary,
-                "failures": failures
+                "failures": failures,
+                "is_implemented": runner.is_implemented
             }
             
             return payload

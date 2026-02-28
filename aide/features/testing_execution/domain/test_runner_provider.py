@@ -1,5 +1,5 @@
 import os
-from aide.features.testing_execution.domain.test_runner_strategy import TestRunnerStrategy, PythonTestRunner, GenericTestRunner
+from aide.features.testing_execution.domain.test_runner_strategy import TestRunnerStrategy, PythonTestRunner, KotlinTestRunner, GenericTestRunner
 
 class TestRunnerProvider:
     """Provides the correct test runner based on standard project markers."""
@@ -11,6 +11,7 @@ class TestRunnerProvider:
         has_js = False
         has_go = False
         has_rs = False
+        has_kt = False
         
         for root, _, files in os.walk(path):
             if any(f.endswith(".py") for f in files):
@@ -21,7 +22,11 @@ class TestRunnerProvider:
                 has_go = True
             if any(f.endswith(".rs") for f in files):
                 has_rs = True
+            if any(f.endswith(".kt") or f == "build.gradle.kts" or f == "gradlew" for f in files):
+                has_kt = True
                 
+        if has_kt:
+            return KotlinTestRunner()
         if has_py:
             return PythonTestRunner()
             

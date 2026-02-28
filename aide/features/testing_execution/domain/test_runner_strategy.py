@@ -11,6 +11,10 @@ class TestRunnerStrategy:
         """Runs coverage and returns (success, overall_coverage_float, list_of_gaps, error_string)"""
         raise NotImplementedError
 
+    @property
+    def is_implemented(self) -> bool:
+        return True
+
 class PythonTestRunner(TestRunnerStrategy):
     def run_tests(self, path: str) -> tuple[bool, str, list]:
         import json
@@ -103,3 +107,45 @@ class GenericTestRunner(TestRunnerStrategy):
         
     def run_coverage(self, src_dir: str, tests_dir: str) -> tuple[bool, float, list, str]:
         return False, 0.0, [], f"Coverage runner not yet implemented for the language in '{src_dir}'."
+
+    @property
+    def is_implemented(self) -> bool:
+        return False
+
+class KotlinTestRunner(TestRunnerStrategy):
+    """Kotlin/Gradle test runner using the Gradle wrapper."""
+    def run_tests(self, path: str) -> tuple[bool, str, list]:
+        import os
+        
+        # Determine root project by searching for gradlew
+        root_dir = path
+        while root_dir and root_dir != os.path.sep:
+            if os.path.exists(os.path.join(root_dir, "gradlew")) or os.path.exists(os.path.join(root_dir, "build.gradle.kts")):
+                break
+            parent = os.path.dirname(root_dir)
+            if parent == root_dir: break
+            root_dir = parent
+            
+        executable = "./gradlew" if os.path.exists(os.path.join(root_dir, "gradlew")) else "gradle"
+        
+        # We try to run the tests. Note: we don't have a structured report like pytest-json-report yet for Gradle,
+        # but we can parse the output or just return success/failure.
+        # For now, let's keep it simple.
+        result = subprocess.run(
+            [executable, "test"],
+            cwd=root_dir,
+            capture_output=True,
+            text=True
+        )
+        
+        success = result.returncode == 0
+        summary = "Gradle tests passed." if success else "Gradle tests failed."
+        failures = []
+        if not success:
+            failures.append({"test": "Gradle Test Suite", "error": result.stdout[-500:]}) # Tail of the output
+            
+        return success, summary, failures
+
+    def run_coverage(self, src_dir: str, tests_dir: str) -> tuple[bool, float, list, str]:
+        # Placeholder for Jacoco or similar
+        return False, 0.0, [], "Coverage runner not yet implemented for Kotlin."
