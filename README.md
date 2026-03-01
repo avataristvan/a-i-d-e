@@ -39,8 +39,6 @@ To enable AIDE as a first-class tool in Gemini:
 2.  **Register Natively**: Create `~/.gemini/extensions/aide-extension/gemini-extension.json` using the template at `~/.local/share/aide/gemini-extension.json`.
 3.  **Restart Gemini**: a-i-d-e will then be recognized as a first-class extension.
 
-For detailed steps, see the [Setup Guide](./docs/setup-first-class-for-gemini.md).
-
 ## Core Capabilities
 
 - **`outline`**: structural code discovery (classes, methods, symbols).
