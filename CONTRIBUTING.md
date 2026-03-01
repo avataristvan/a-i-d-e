@@ -2,18 +2,21 @@
 
 Thank you for your interest in contributing to **AIDE (Agent Interface for Deterministic Editing)**!
 
-## Finding Features and Issues
-AIDE is built from an agent for agents. The highest goal for an agent is to solve te Navigators problem.
-So the Navigator does not necessarily recognize, if aide fails or lacks a feature, to solve a problem in a deterministic way.
+## Identifying Missing Features and Issues
 
-Simply ask your agent for its observations.
+AIDE is built by agents, for agents. Since an agent's primary goal is to solve the user's problem, it may not always be obvious when AIDE falls short or lacks a feature required for a deterministic result.
+
+To discover areas for improvement, simply ask your agent for its feedback:
 ```
-Could you use aide in Your last task? Did You observe an unexpected result or did you miss a functionality?
+Could you use AIDE in your last task? Did you encounter any unexpected results, or was there any functionality you missed?
 ```
 
-## out of scope decisions
-* backwards compatibility for python < 3.12. Please maintain your code first. Agents per default try to provide backwards compatibility beyond EOLs but it complicates the development process unnecessarily. 
-* aide as a bridge between agents. (tested and behaved non-deterministically between the parties -> rolled back) 
+## Out-of-Scope Decisions
+
+To keep AIDE focused and maintainable, the following are currently out of scope:
+
+* **Support for Python < 3.12:** I prioritize modern Python features. While agents may naturally try to offer broader compatibility, supporting versions beyond their end-of-life simply makes development more complex than it needs to be.
+* **AIDE as a cross-agent bridge:** I've experimented with using AIDE as a direct communication bridge between multiple agents. However, this often led to non-deterministic behavior and has been rolled back and excluded for now.
 
 ## Architecture Guidelines
 
@@ -32,9 +35,9 @@ To add a new refactoring, code generation, or testing utility command:
 
 ## Testing
 
-AIDE relies heavily on deterministic operations and static parsing. Because we modify source code autonomously, having a robust test suite is critical.
+AIDE relies heavily on deterministic operations and static parsing. Because the agents modify source code autonomously, having a robust test suite is critical.
 
-We use `pytest` for all unit and integration testing.
+`pytest` is used for all unit and integration testing.
 
 ### Running Tests
 
