@@ -1,7 +1,16 @@
-# a-i-d-e
-**Agent Interface for Deterministic Editing**
+# a-i-d-e - Agent Interface for Deterministic Editing
+AIDE is a specialized CLI tool designed to empower AI Agents with **deterministic code analysis, refactoring, and generation**. While it runs in a standard terminal, its only "users" are agents. 
 
-AIDE is a specialized CLI tool designed to empower AI Agents with deterministic code analysis, refactoring, code generation, and test execution capabilities across multiple languages (**Kotlin, TypeScript, JavaScript, Python, C#, Rust, Go, C++, Scala, Ruby**). While it runs in a standard terminal, its only "users" are agents.
+AIDE acts as a **structural scalpel**, allowing agents to perform high-stakes architectural migrations to **Clean Architecture** and **Capability-centric DDD** with mathematical stability and zero risk via automated test-verification and instant rollback.
+
+## The Structural Scalpel
+
+LLMs are exceptional at drafting logic but often struggle with large-scale structural refactoring. Moving a symbol across packages or changing a signature project-wide can easily lead to "hallucinated" imports or broken references.
+
+AIDE solves this by providing a hybrid intelligence layer:
+1. **Deterministic Execution**: Uses native AST (Python) and robust Regex parsers to perform precise, machine-stable code modifications.
+2. **Agentic Interface**: Returns structured JSON payloads specifically designed for agent consumption, not human reading.
+3. **Atomic Safety**: All refactoring commands support the `--verify` flag, which executes your test suite and **auto-reverts every change** if a single test fails.
 
 ## Navigator's Guide (Quick Setup)
 
