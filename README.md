@@ -1,7 +1,7 @@
 # a-i-d-e
 **Agent Interface for Deterministic Editing**
 
-AIDE is a specialized CLI tool designed to empower AI Agents with deterministic code analysis, refactoring, code generation, and test execution capabilities across multiple languages (**Kotlin, TypeScript, JavaScript, Python, C#, Rust, Go, C++, Scala, Ruby**). While it runs in a standard terminal, its primary "users" are automated sub-agents.
+AIDE is a specialized CLI tool designed to empower AI Agents with deterministic code analysis, refactoring, code generation, and test execution capabilities across multiple languages (**Kotlin, TypeScript, JavaScript, Python, C#, Rust, Go, C++, Scala, Ruby**). While it runs in a standard terminal, its only "users" are agents.
 
 ## Navigator's Guide (Quick Setup)
 
@@ -9,17 +9,18 @@ AIDE is designed for zero-friction integration. Choose the best setup for your e
 
 ### Setup Options
 
-#### Option A: Global Installation (Recommended)
+#### Option A: Project-Local (for local agents in general)
+Clone or copy the `a-i-d-e/` directory into your project root.
+1.  **Authorize**: `chmod +x a-i-d-e/aide.py`
+2.  **Instruct**: Activate the **Orchestrator** by adding [skills/project-injection/SKILL.md](./skills/project-injection/SKILL.md) to your project rules.
+
+#### Option B: Extension for Gemini
 Make AIDE available as a first-class tool across all your workspaces. This allows agents to use `@aide` from anywhere.
 ```bash
 python3 scripts/install_global.py
 ```
 This installs AIDE to `~/.local/share/aide` and creates a global `aide` shim in `~/.local/bin`. After installation, register the **Global Skill** by adding [skills/global-aide/SKILL.md](./skills/global-aide/SKILL.md) to your agent's memory.
 
-#### Option B: Project-Local
-Clone or copy the `a-i-d-e/` directory into your project root.
-1.  **Authorize**: `chmod +x a-i-d-e/aide.py`
-2.  **Instruct**: Activate the **Orchestrator** by adding [skills/project-injection/SKILL.md](./skills/project-injection/SKILL.md) to your project rules.
 
 ### Verify Installation
 Run the health check to ensure everything is ready:
@@ -31,12 +32,12 @@ aide --help
 python3 a-i-d-e/check-aide.py
 ```
 
-### Agent Integration (@aide)
-To enable the `@aide` syntax and deterministic refactoring in Gemini:
+### Extension for Gemini 
+To enable AIDE as a first-class tool in Gemini:
 
 1.  **Run the Installer**: `python3 scripts/install_global.py`
 2.  **Register Natively**: Create `~/.gemini/extensions/aide-extension/gemini-extension.json` using the template at `~/.local/share/aide/gemini-extension.json`.
-3.  **Restart Gemini**: The tool will then be recognized as a first-class `@aide` extension.
+3.  **Restart Gemini**: a-i-d-e will then be recognized as a first-class extension.
 
 For detailed steps, see the [Setup Guide](./docs/setup-first-class-for-gemini.md).
 
