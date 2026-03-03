@@ -1,6 +1,5 @@
 import json
 from argparse import _SubParsersAction
-import os
 from aide.core.context import Context
 from aide.features.code_inspection.application.outline import OutlineUseCase
 
@@ -41,43 +40,15 @@ class CodeInspectionPlugin:
         print(json.dumps(result, indent=2))
 
     def handle_read(self, args, context: Context):
-        if os.path.exists(args.file):
-            content = context.file_system.read_file(args.file)
-            lines = content.splitlines()
-            
-            start_line = 1
-            end_line = len(lines)
-            
-            if args.selection:
-                try:
-                    parts = args.selection.split(':')
-                    start_line = int(parts[0])
-                    if len(parts) > 1:
-                        end_line = int(parts[1])
-                except ValueError:
-                    print(json.dumps({"success": False, "error": f"Invalid selection format: {args.selection}. Use start:end (e.g. 10:20)"}))
-                    return
-            
-            read_lines = []
-            for i in range(start_line - 1, end_line):
-                if i < len(lines):
-                    read_lines.append(f"{i+1}: {lines[i]}")
-
-            result = {
-                "success": True,
-                "message": "File read complete.",
-                "data": {
-                    "file_path": os.path.abspath(args.file),
-                    "total_lines": len(lines),
-                    "total_bytes": len(content),
-                    "start_line": start_line,
-                    "end_line": end_line,
-                    "content": "\n".join(read_lines)
-                }
-            }
-            print(json.dumps(result, indent=2))
-        else:
-            print(json.dumps({"success": False, "error": f"File not found: {args.file}"}))
+        from aide.features.code_inspection.application.read_file import ReadFileUseCase
+        use_case = ReadFileUseCase(context.file_system)
+        try:
+            data = use_case.execute(args.file, args.selection)
+            print(json.dumps({"success": True, "message": "File read complete.", "data": data}, indent=2))
+        except FileNotFoundError as e:
+            print(json.dumps({"success": False, "error": str(e)}))
+        except ValueError as e:
+            print(json.dumps({"success": False, "error": str(e)}))
 
     def handle_usages(self, args, context: Context):
         from aide.features.code_inspection.application.find_usages import FindUsagesUseCase

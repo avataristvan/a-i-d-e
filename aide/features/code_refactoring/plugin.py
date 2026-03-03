@@ -2,7 +2,6 @@ import json
 from argparse import _SubParsersAction
 import os
 from aide.core.context import Context
-from aide.features.code_refactoring.application.smart_rename import SmartRenameUseCase
 
 class RefactorPlugin:
     def register(self, subparsers: _SubParsersAction, context: Context) -> None:
@@ -212,63 +211,32 @@ class RefactorPlugin:
             return True, False, None
 
     def handle_move_package(self, args, context: Context):
-        src_root = os.path.abspath(os.path.join(args.root, args.src_root))
-        # Try relative to src-root first, fallback to root
-        src_path = os.path.abspath(os.path.join(src_root, args.src))
-        if not os.path.exists(src_path):
-             src_path = os.path.abspath(os.path.join(args.root, args.src))
-
-        if not os.path.exists(src_path):
-            print(json.dumps({"success": False, "error": f"Source path does not exist: {src_path}"}))
-            return
-
-        # Infer old package/module name
-        rel_path = os.path.relpath(src_path, src_root)
-        if rel_path.startswith(".."):
-            print(json.dumps({"success": False, "error": f"Source path must be inside src-root: {src_root}"}))
-            return
-
-        old_package = rel_path.replace(os.sep, ".")
-        new_package = args.dest_package
+        from aide.features.code_refactoring.application.move_package import MovePackageUseCase
 
         reverted = False
-        if getattr(args, "verify", False): context.file_system.start_transaction()
+        if getattr(args, "verify", False):
+            context.file_system.start_transaction()
 
-        # Calculate destination path (assume standard dot-to-slash mapping)
-        dest_rel_path = new_package.replace(".", os.sep)
-        dest_path = os.path.join(src_root, dest_rel_path)
-
-        # Move files
-        try:
-            if not args.dry_run:
-                context.file_system.move_path(src_path, dest_path)
-                # Cleanup old empty parent folders up to src-root
-                context.file_system.delete_empty_parents(src_path, src_root)
-        except Exception as e:
-             if getattr(args, "verify", False): context.file_system.rollback()
-             print(json.dumps({"success": False, "error": f"Failed to move files: {e}"}))
-             return
-
-        # Smart Rename package refs
-        use_case = SmartRenameUseCase(context.file_system)
-        res = use_case.execute(args.root, old_package, new_package, dry_run=args.dry_run)
+        use_case = MovePackageUseCase(context.file_system)
+        res = use_case.execute(args.src, args.dest_package, args.root, args.src_root, dry_run=args.dry_run)
 
         if res.success:
             success, reverted, msg = self._verify_and_commit(args, context, args.root)
             res.success = success
-            if msg: res.message = msg
+            if msg:
+                res.message = msg
 
         result = {
             "success": res.success,
-            "message": res.message if res.message and res.message != "Success" else "Move complete." if res.success and not reverted else "Move failed.",
+            "message": res.message,
             "data": {
-                "old_package": old_package,
-                "new_package": new_package,
+                "old_package": res.old_package,
+                "new_package": res.new_package,
                 "files_updated": res.files_changed,
                 "replacements": res.total_replacements,
                 "dry_run": args.dry_run,
-                "reverted": reverted
-            }
+                "reverted": reverted,
+            },
         }
         print(json.dumps(result, indent=2))
     def handle_extract(self, args, context: Context):
