@@ -1,5 +1,5 @@
 from typing import Dict
-from aide.core.domain.ports import LanguageStrategy
+from aide.core.domain.ports import LanguageStrategy, StrategyProviderPort
 from aide.parsing.infrastructure.kotlin_strategy import KotlinLanguageStrategy
 from aide.parsing.infrastructure.typescript_strategy import TypeScriptLanguageStrategy
 from aide.parsing.infrastructure.python_strategy import PythonLanguageStrategy
@@ -10,7 +10,7 @@ from aide.parsing.infrastructure.cpp_strategy import CppLanguageStrategy
 from aide.parsing.infrastructure.scala_strategy import ScalaLanguageStrategy
 from aide.parsing.infrastructure.ruby_strategy import RubyLanguageStrategy
 
-class StrategyProvider:
+class StrategyProvider(StrategyProviderPort):
     def __init__(self):
         self._strategies: dict[str, LanguageStrategy] = {}
         

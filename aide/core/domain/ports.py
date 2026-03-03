@@ -52,6 +52,12 @@ class FileSystemPort(ABC):
         """Reverts all file system changes made since the transaction started."""
         pass
 
+class StrategyProviderPort(ABC):
+    @abstractmethod
+    def get_strategy(self, file_path: str) -> "LanguageStrategy":
+        """Returns the appropriate LanguageStrategy for the given file path."""
+        pass
+
 class TestRunnerPort(ABC):
     @abstractmethod
     def run(self, root_path: str) -> dict:
