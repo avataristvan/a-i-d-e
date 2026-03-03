@@ -6,22 +6,56 @@ argument-hint: <command> [args]
 
 # AIDE — Agent Interface for Deterministic Editing
 
-Available via the `aide` global command. All file operations are jailed to the project root — path traversal is blocked at the OS level. Refactoring commands emit structured JSON.
+Available via the `aide` global command. All file operations are jailed to the project root — path traversal is blocked at the OS level.
 
 **Supported languages**: Kotlin, TypeScript, JavaScript, Python, C#, Rust, Go, C++, Scala, Ruby.
 
+## Output format
+
+Every command emits JSON to stdout:
+```json
+{"success": true, "message": "...", "data": { ... }}
+```
+Check `success` before consuming `data`. On failure, `message` contains the error.
+
 ## Flags (all refactoring commands)
 - `-n` / `--dry-run` — Preview changes without writing to disk.
-- `--verify` — Run tests after refactoring; auto-revert all changes if any test fails. **Always prefer this flag.**
+- `--verify` — Run tests after refactoring; auto-revert all changes if any test fails. Omit if the project has no test suite — it will hard-fail.
+
+## Recommended workflow
+
+```
+# 1. Understand blast radius first
+aide find-impact --symbol <name>
+
+# 2. Preview the change
+aide <refactor-command> ... --dry-run
+
+# 3. Execute atomically (only if a test suite exists)
+aide <refactor-command> ... --verify
+```
 
 ## Inspection
 
 ```
-aide outline <glob-pattern>                          # Symbol structure of matching files
-aide read <file> [--selection start:end]             # Line-numbered file content
-aide usages <symbol> [--root <dir>]                 # All usages of a symbol across the project
-aide find-impact <symbol> [--root <dir>]            # Which source & test files are impacted by a symbol change
+aide outline "<glob>"                                # Symbol map — use ** for recursive, e.g. "**/*.py"
+aide read <file> [--selection start:end]             # Line-numbered content (--selection is 1-based, inclusive)
+aide usages <symbol> [--root <dir>]                 # Usages → data.usages: ["file:line:col", ...]
+aide find-impact --symbol <name> [--file <file>]    # data.impacted_files / data.impacted_tests
 ```
+
+`outline` legend: `[C]` = class/interface, `[f]` = function/method. Output is in `data.outline` as markdown.
+
+Use `--file` on `find-impact` when the symbol name is ambiguous across multiple files.
+
+## Which move command to use
+
+| Goal | Command |
+|---|---|
+| Move a single symbol (class/function) to another file | `move-symbol` |
+| Move one or more files to a different directory | `move-file` |
+| Move a whole package/directory and update all references | `move-package` |
+| Bulk-update import paths after a manual move | `update-references` |
 
 ## Refactoring
 
