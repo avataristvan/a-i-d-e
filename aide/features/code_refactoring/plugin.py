@@ -194,9 +194,14 @@ class RefactorPlugin:
         if not getattr(args, "verify", False) or args.dry_run:
             return True, False, None
 
-        from aide.features.testing_execution.application.execute_tests import ExecuteTestsUseCase
-        test_use_case = ExecuteTestsUseCase(context.file_system)
-        test_res = test_use_case.execute(root_path)
+        from aide.core.domain.ports import TestRunnerPort
+        try:
+            test_runner = context.resolve(TestRunnerPort)
+        except KeyError:
+            context.file_system.commit()
+            return True, False, "Refactoring complete, but verification was skipped: no test runner registered."
+
+        test_res = test_runner.run(root_path)
 
         if not test_res.get("success", False):
             if test_res.get("is_implemented", True):

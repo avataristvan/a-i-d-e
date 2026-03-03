@@ -33,10 +33,14 @@ exit 0""")
     return tmp_path
 
 def test_move_package_kotlin_verification_skip_on_missing_runner(kotlin_project):
-    # If we don't have a runner, it should skip verification and NOT rollback
+    # When gradle fails, the refactoring should be reverted
     file_system = OsFileSystem(jailed_root=str(kotlin_project))
     context = Context(file_system=file_system, language_parser=CompositeLanguageParser(RegexLanguageParser()))
-    
+
+    from aide.core.domain.ports import TestRunnerPort
+    from aide.features.testing_execution.infrastructure.test_runner_adapter import TestRunnerAdapter
+    context.register(TestRunnerPort, TestRunnerAdapter(file_system))
+
     plugin = RefactorPlugin()
     
     class Args:

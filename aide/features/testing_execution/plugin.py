@@ -1,14 +1,17 @@
 import json
 from argparse import _SubParsersAction
 from aide.core.context import Context
+from aide.core.domain.ports import TestRunnerPort
 from aide.features.testing_execution.application.execute_tests import ExecuteTestsUseCase
 from aide.features.testing_execution.application.audit_fixtures import AuditFixturesUseCase
 from aide.features.testing_execution.application.test_audit import AuditCoverageUseCase
+from aide.features.testing_execution.infrastructure.test_runner_adapter import TestRunnerAdapter
 
 class TestExecutionPlugin:
     """Plugin to handle deterministic AI-readable test execution and coverage reports."""
-    
+
     def register(self, subparsers: _SubParsersAction, context: Context) -> None:
+        context.register(TestRunnerPort, TestRunnerAdapter(context.file_system))
         # aide test
         test_parser = subparsers.add_parser("test", help="Run tests and return machine-readable report")
         test_parser.add_argument("--path", required=True, help="Path to tests directory")

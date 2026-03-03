@@ -52,6 +52,12 @@ class FileSystemPort(ABC):
         """Reverts all file system changes made since the transaction started."""
         pass
 
+class TestRunnerPort(ABC):
+    @abstractmethod
+    def run(self, root_path: str) -> dict:
+        """Runs tests and returns a dict with 'success', 'summary', 'failures', 'is_implemented'."""
+        pass
+
 class LanguageStrategy(ABC):
     @abstractmethod
     def extract_imports_and_header(self, lines: list[str]) -> tuple[list[str], str | None]:

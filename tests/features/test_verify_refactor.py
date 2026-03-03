@@ -15,22 +15,20 @@ def test_context(temp_dir):
     strategy_provider = StrategyProvider()
     return Context(file_system=fs, language_parser=parser, strategy_provider=strategy_provider)
 
-def test_verify_refactor_reverts_on_test_failure(temp_dir, test_context, capsys, monkeypatch):
+def test_verify_refactor_reverts_on_test_failure(temp_dir, test_context, capsys):
     # Setup initial state
     test_file = os.path.join(temp_dir, "to_rename.py")
     test_context.file_system.write_file(test_file, "def old_func():\n    pass\n")
 
-    # Mock the ExecuteTestsUseCase to simulate a test failure
-    from aide.features.testing_execution.application.execute_tests import ExecuteTestsUseCase
-    
-    class MockFailingTestRunner:
-        def __init__(self, *args, **kwargs):
-            pass
-        def execute(self, *args, **kwargs):
-            return {"success": False, "summary": "1 test failed", "failures": [{"test": "test_failure", "error": "AssertionError"}]}
+    # Register a mock TestRunnerPort that simulates test failure
+    from aide.core.domain.ports import TestRunnerPort
 
-    monkeypatch.setattr("aide.features.testing_execution.application.execute_tests.ExecuteTestsUseCase", MockFailingTestRunner)
-    
+    class MockFailingRunner(TestRunnerPort):
+        def run(self, root_path):
+            return {"success": False, "summary": "1 test failed", "failures": [{"test": "test_failure", "error": "AssertionError"}], "is_implemented": True}
+
+    test_context.register(TestRunnerPort, MockFailingRunner())
+
     plugin = RefactorPlugin()
     
     # Try renaming a symbol with --verify
@@ -55,22 +53,20 @@ def test_verify_refactor_reverts_on_test_failure(temp_dir, test_context, capsys,
     assert "old_func" in file_content
     assert "new_func" not in file_content
 
-def test_verify_refactor_commits_on_test_success(temp_dir, test_context, capsys, monkeypatch):
+def test_verify_refactor_commits_on_test_success(temp_dir, test_context, capsys):
     # Setup initial state
     test_file = os.path.join(temp_dir, "to_rename_success.py")
     test_context.file_system.write_file(test_file, "def old_func():\n    pass\n")
 
-    # Mock the ExecuteTestsUseCase to simulate test success
-    from aide.features.testing_execution.application.execute_tests import ExecuteTestsUseCase
-    
-    class MockPassingTestRunner:
-        def __init__(self, *args, **kwargs):
-            pass
-        def execute(self, *args, **kwargs):
-            return {"success": True, "summary": "1 test passed", "failures": []}
+    # Register a mock TestRunnerPort that simulates test success
+    from aide.core.domain.ports import TestRunnerPort
 
-    monkeypatch.setattr("aide.features.testing_execution.application.execute_tests.ExecuteTestsUseCase", MockPassingTestRunner)
-    
+    class MockPassingRunner(TestRunnerPort):
+        def run(self, root_path):
+            return {"success": True, "summary": "1 test passed", "failures": [], "is_implemented": True}
+
+    test_context.register(TestRunnerPort, MockPassingRunner())
+
     plugin = RefactorPlugin()
     
     args = Namespace(
