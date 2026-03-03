@@ -15,77 +15,66 @@ class FindImpactUseCase:
     def execute(self, symbol_name: str, source_file: str = None) -> dict[str, Any]:
         impacted_files = set()
         impacted_tests = set()
-        
-        try:
-            # 1. Broadly find usages
-            root_path = "."
-            raw_usages = self.find_usages.execute(root_path, symbol_name)
-            
-            # 2. Determine defining module if source_file is provided
-            defining_module = None
-            if source_file and os.path.exists(source_file):
+
+        # 1. Broadly find usages
+        raw_usages = self.find_usages.execute(".", symbol_name)
+
+        # 2. Determine defining module if source_file is provided
+        defining_module = None
+        if source_file and os.path.exists(source_file):
+            try:
+                strategy = self.strategy_provider.get_strategy(os.path.abspath(source_file))
+                defining_module = strategy.get_module_path(os.path.abspath(source_file))
+            except Exception:
+                pass
+
+        for usage in raw_usages:
+            file_rel_path = usage.split(":")[0]
+            file_path = os.path.abspath(file_rel_path)
+
+            # Filter out the source file itself
+            if source_file and os.path.abspath(source_file) == file_path:
+                continue
+
+            # Advanced Graph Check: Verify the file imports the defining module
+            # (Skip check if defining_module couldn't be resolved or file doesn't exist)
+            has_graph_dependency = True
+            if defining_module and os.path.exists(file_path):
                 try:
-                    strategy = self.strategy_provider.get_strategy(os.path.abspath(source_file))
-                    defining_module = strategy.get_module_path(os.path.abspath(source_file))
+                    content = self.file_system.read_file(file_path)
+                    _, ext = os.path.splitext(file_path)
+                    imports = self.language_parser.parse_imports(content, ext)
+
+                    module_imported = False
+                    for imp in imports:
+                        if defining_module in imp or imp in defining_module:
+                            module_imported = True
+                            break
+                        if symbol_name in imp:
+                            module_imported = True
+                            break
+
+                    if not module_imported:
+                        strategy = self.strategy_provider.get_strategy(file_path)
+                        local_module = strategy.get_module_path(file_path)
+                        if local_module == defining_module:
+                            module_imported = True
+
+                    if not module_imported:
+                        has_graph_dependency = False
                 except Exception:
-                    pass
+                    pass  # proceed if we can't parse it
 
-            for usage in raw_usages:
-                file_rel_path = usage.split(":")[0]
-                file_path = os.path.abspath(file_rel_path)
-                
-                # Filter out the source file itself
-                if source_file and os.path.abspath(source_file) == file_path:
-                    continue
+            if has_graph_dependency:
+                if self._is_test_file(file_rel_path):
+                    impacted_tests.add(file_rel_path)
+                else:
+                    impacted_files.add(file_rel_path)
 
-                # Advanced Graph Check: Verify the file imports the defining module
-                # (Skip check if defining_module couldn't be resolved or file doesn't exist)
-                has_graph_dependency = True
-                if defining_module and os.path.exists(file_path):
-                    try:
-                        content = self.file_system.read_file(file_path)
-                        _, ext = os.path.splitext(file_path)
-                        imports = self.language_parser.parse_imports(content, ext)
-                        
-                        # Check if any import references the defining_module
-                        # We use simple substring matching for now as imports can be structured differently
-                        module_imported = False
-                        for imp in imports:
-                            if defining_module in imp or imp in defining_module:
-                                module_imported = True
-                                break
-                            # Also check if the symbol itself is explicitly imported
-                            if symbol_name in imp:
-                                module_imported = True
-                                break
-                                
-                        if not module_imported:
-                            # Also check if they are in the exact same package/module
-                            # If so, they don't need imports
-                            strategy = self.strategy_provider.get_strategy(file_path)
-                            local_module = strategy.get_module_path(file_path)
-                            if local_module == defining_module:
-                                module_imported = True
-                                
-                        if not module_imported:
-                            # It's a false positive (grep match but no actual dependency graph link)
-                            has_graph_dependency = False
-                    except Exception:
-                        pass # proceed if we can't parse it
-                        
-                if has_graph_dependency:
-                    if self._is_test_file(file_rel_path):
-                        impacted_tests.add(file_rel_path)
-                    else:
-                        impacted_files.add(file_rel_path)
-
-            return {
-                "impacted_files": sorted(list(impacted_files)),
-                "impacted_tests": sorted(list(impacted_tests))
-            }
-
-        except Exception as e:
-            return {"impacted_files": [], "impacted_tests": []}
+        return {
+            "impacted_files": sorted(list(impacted_files)),
+            "impacted_tests": sorted(list(impacted_tests)),
+        }
 
     def _is_test_file(self, file_path: str) -> bool:
         lower_path = file_path.lower()

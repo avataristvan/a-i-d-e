@@ -9,45 +9,42 @@ class ScaffoldMocksUseCase:
         self.strategy_provider = strategy_provider
 
     def execute(self, file_path: str, class_name: str, output_format: str = "json") -> str | None:
-        try:
-            content = self.file_system.read_file(file_path)
-            lines = content.splitlines()
-            
-            strategy = self.strategy_provider.get_strategy(file_path)
-            
-            # Find the symbol range 
-            start, end = strategy.find_symbol_range(lines, class_name)
-            if not start:
-                return None
-            
-            # Extract dependencies (parameters from __init__ or constructor)
-            # This is a naive regex-based dependency extraction for demonstration.
-            # In a full AST, this would be highly precise.
-            
-            class_code = "\n".join(lines[start - 1 : end])
-            
-            dependencies = self._extract_dependencies(class_code, class_name, file_path)
-            
-            mock_scaffolds = []
-            for dep_name, dep_type in dependencies.items():
-                mock_scaffolds.append(self._generate_mock_class(dep_name, dep_type, file_path))
-                
-            context_data: dict[str, Any] = {
-                "target_class": class_name,
-                "file_path": file_path,
-                "dependencies_found": len(dependencies),
-                "mock_classes": mock_scaffolds
-            }
-            
-            if output_format == "json":
-                return json.dumps(context_data, indent=2)
-            elif output_format == "markdown":
-                return self._format_markdown(context_data)
-            else:
-                return json.dumps(context_data)
-                
-        except Exception as e:
+        content = self.file_system.read_file(file_path)
+        lines = content.splitlines()
+        
+        strategy = self.strategy_provider.get_strategy(file_path)
+        
+        # Find the symbol range 
+        start, end = strategy.find_symbol_range(lines, class_name)
+        if not start:
             return None
+        
+        # Extract dependencies (parameters from __init__ or constructor)
+        # This is a naive regex-based dependency extraction for demonstration.
+        # In a full AST, this would be highly precise.
+        
+        class_code = "\n".join(lines[start - 1 : end])
+        
+        dependencies = self._extract_dependencies(class_code, class_name, file_path)
+        
+        mock_scaffolds = []
+        for dep_name, dep_type in dependencies.items():
+            mock_scaffolds.append(self._generate_mock_class(dep_name, dep_type, file_path))
+            
+        context_data: dict[str, Any] = {
+            "target_class": class_name,
+            "file_path": file_path,
+            "dependencies_found": len(dependencies),
+            "mock_classes": mock_scaffolds
+        }
+        
+        if output_format == "json":
+            return json.dumps(context_data, indent=2)
+        elif output_format == "markdown":
+            return self._format_markdown(context_data)
+        else:
+            return json.dumps(context_data)
+            
 
     def _extract_dependencies(self, class_code: str, class_name: str, file_path: str) -> dict[str, str]:
         deps = {}

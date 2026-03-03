@@ -8,32 +8,29 @@ class ProjectDtoUseCase:
         self.strategy_provider = strategy_provider
 
     def execute(self, source_file: str, entity_name: str, target_file: str, dto_name: str, stack: str) -> bool:
-        try:
-            content = self.file_system.read_file(source_file)
-            lines = content.splitlines()
-            
-            strategy = self.strategy_provider.get_strategy(source_file)
-            
-            # Find the entity class bounds
-            start, end = strategy.find_symbol_range(lines, entity_name)
-            if not start:
-                return False
-
-            entity_body = "\n".join(lines[start-1:end])
-            
-            # Extract fields
-            fields = self._extract_fields(entity_body, stack)
-            if not fields:
-                return False
-                
-            # Generate DTO content
-            dto_content = self._generate_dto(dto_name, fields, stack, entity_name)
-            
-            self.file_system.write_file(target_file, dto_content)
-            return True
-
-        except Exception as e:
+        content = self.file_system.read_file(source_file)
+        lines = content.splitlines()
+        
+        strategy = self.strategy_provider.get_strategy(source_file)
+        
+        # Find the entity class bounds
+        start, end = strategy.find_symbol_range(lines, entity_name)
+        if not start:
             return False
+
+        entity_body = "\n".join(lines[start-1:end])
+        
+        # Extract fields
+        fields = self._extract_fields(entity_body, stack)
+        if not fields:
+            return False
+            
+        # Generate DTO content
+        dto_content = self._generate_dto(dto_name, fields, stack, entity_name)
+        
+        self.file_system.write_file(target_file, dto_content)
+        return True
+
 
     def _extract_fields(self, body: str, stack: str):
         fields = []

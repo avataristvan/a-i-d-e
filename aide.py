@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import json
 import sys
 import os
 
@@ -54,7 +55,7 @@ def main():
             if os.environ.get("AIDE_VERBOSE"):
                 import traceback
                 traceback.print_exc()
-            print(f"\033[91mError: {str(e)}\033[0m", file=sys.stderr)
+            print(json.dumps({"success": False, "error": str(e)}))
             sys.exit(1)
     else:
         parser.print_help()
