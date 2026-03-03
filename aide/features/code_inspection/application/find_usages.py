@@ -1,9 +1,11 @@
 import os
 import re
 from typing import Any, Tuple, Callable, Generator
+from aide.core.domain.ports import FileSystemPort
+from aide.parsing.domain.ports import LanguageParserPort
 
 class FindUsagesUseCase:
-    def __init__(self, file_system, language_parser):
+    def __init__(self, file_system: FileSystemPort, language_parser: LanguageParserPort) -> None:
         self.file_system = file_system
         self.language_parser = language_parser
 

@@ -2,9 +2,11 @@ import os
 import re
 from typing import Any, Tuple, Callable, Generator
 from aide.features.code_inspection.application.find_usages import FindUsagesUseCase
+from aide.core.domain.ports import FileSystemPort, StrategyProviderPort
+from aide.parsing.domain.ports import LanguageParserPort
 
 class ChangeSignatureUseCase:
-    def __init__(self, file_system, language_parser, strategy_provider):
+    def __init__(self, file_system: FileSystemPort, language_parser: LanguageParserPort, strategy_provider: StrategyProviderPort) -> None:
         self.file_system = file_system
         self.language_parser = language_parser
         self.strategy_provider = strategy_provider

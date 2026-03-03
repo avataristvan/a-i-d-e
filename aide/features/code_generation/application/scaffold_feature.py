@@ -1,7 +1,8 @@
 import os
+from aide.core.domain.ports import FileSystemPort
 
 class ScaffoldFeatureUseCase:
-    def __init__(self, file_system):
+    def __init__(self, file_system: FileSystemPort) -> None:
         self.file_system = file_system
 
     def execute(self, feature_name: str, stack: str, output_dir: str) -> bool:

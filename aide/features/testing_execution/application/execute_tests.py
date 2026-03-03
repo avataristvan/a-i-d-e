@@ -2,11 +2,12 @@ import json
 import subprocess
 from typing import Dict, Any
 from aide.features.testing_execution.domain.test_runner_provider import TestRunnerProvider
+from aide.core.domain.ports import FileSystemPort
 
 class ExecuteTestsUseCase:
     """Wraps test execution and returns a machine-readable JSON payload of the results."""
     
-    def __init__(self, file_system):
+    def __init__(self, file_system: FileSystemPort) -> None:
         self.file_system = file_system
         
     def execute(self, path: str, format: str = "json") -> dict[str, Any]:

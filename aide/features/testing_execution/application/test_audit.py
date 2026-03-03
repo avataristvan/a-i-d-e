@@ -2,13 +2,14 @@ import subprocess
 import json
 from typing import Dict, Any
 from aide.features.testing_execution.domain.test_runner_provider import TestRunnerProvider
+from aide.core.domain.ports import FileSystemPort
 
 class AuditCoverageUseCase:
     """Runs coverage and reports uncovered lines in JSON format."""
     __test__ = False
     
     
-    def __init__(self, file_system):
+    def __init__(self, file_system: FileSystemPort) -> None:
         self.file_system = file_system
         
     def execute(self, src_dir: str, tests_dir: str, format: str = "json") -> dict[str, Any]:

@@ -1,8 +1,9 @@
 import re
 from typing import Any, Tuple, Callable, Generator
+from aide.core.domain.ports import FileSystemPort, StrategyProviderPort
 
 class ExtractFunctionUseCase:
-    def __init__(self, file_system, strategy_provider):
+    def __init__(self, file_system: FileSystemPort, strategy_provider: StrategyProviderPort) -> None:
         self.file_system = file_system
         self.strategy_provider = strategy_provider
 

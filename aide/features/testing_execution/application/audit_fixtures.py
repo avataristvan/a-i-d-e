@@ -1,11 +1,12 @@
 import re
 from typing import Any, Tuple, Callable, Generator
 import os
+from aide.core.domain.ports import FileSystemPort
 
 class AuditFixturesUseCase:
     """Scans test directory for unused or redundant pytest fixtures."""
     
-    def __init__(self, file_system):
+    def __init__(self, file_system: FileSystemPort) -> None:
         self.file_system = file_system
         
     def execute(self, tests_dir: str, format: str = "json") -> dict[str, Any]:

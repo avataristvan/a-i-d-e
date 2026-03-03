@@ -1,9 +1,11 @@
 import os
 import re
+from aide.core.domain.ports import FileSystemPort, StrategyProviderPort
+from aide.parsing.domain.ports import LanguageParserPort
 
 
 class MoveSymbolUseCase:
-    def __init__(self, file_system, language_parser, strategy_provider):
+    def __init__(self, file_system: FileSystemPort, language_parser: LanguageParserPort, strategy_provider: StrategyProviderPort) -> None:
         self.file_system = file_system
         self.language_parser = language_parser
         self.strategy_provider = strategy_provider
@@ -121,7 +123,7 @@ class MoveSymbolUseCase:
 
         return False
 
-    def _update_references(self, old_text: str, new_text: str, dry_run: bool, root: str = "."):
+    def _update_references(self, old_text: str, new_text: str, dry_run: bool, root: str = ".") -> None:
         extensions = (".kt", ".java", ".py", ".ts", ".tsx", ".js", ".jsx", ".xml")
         for file_path in self.file_system.walk_files(root):
             if file_path.endswith(extensions):
