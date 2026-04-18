@@ -23,6 +23,9 @@ dev = [
   "pytest",
   "typeguard"
 ]
+search = [
+  "semgrep"
+]
 
 [tool.setuptools]
 packages = ["aide"]

@@ -1,6 +1,6 @@
 ---
 name: aide
-description: Agent Interface for Deterministic Editing. Use when performing structural code refactoring (move, rename, extract symbols/files/packages), inspecting code structure (outline, usages, impact analysis), generating code (scaffold Clean Architecture features, implement interfaces, generate DTOs), or running tests with structured JSON output. All refactoring commands support --verify for atomic auto-rollback on test failure.
+description: Agent Interface for Deterministic Editing. Use when performing structural code refactoring (move, rename, extract symbols/files/packages), inspecting code structure (outline, usages, impact analysis, dead code, symbol git history), generating code (scaffold Clean Architecture features, implement interfaces, generate DTOs), AST-aware structural search/replace via semgrep, or running tests with structured JSON output. All refactoring commands support --verify for atomic auto-rollback on test failure.
 argument-hint: <command> [args]
 ---
 
@@ -42,11 +42,37 @@ aide outline "<glob>"                                # Symbol map — use ** for
 aide read <file> [--selection start:end]             # Line-numbered content (--selection is 1-based, inclusive)
 aide usages <symbol> [--root <dir>]                 # Usages → data.usages: ["file:line:col", ...]
 aide find-impact --symbol <name> [--file <file>]    # data.impacted_files / data.impacted_tests
+aide dead-code [--root <dir>] [--ignore <patterns>] # Find unreferenced top-level symbols; --ignore accepts comma-separated globs e.g. '*Plugin,*Adapter'
+aide symbol-blame --file <path> --symbol <name>     # Git blame at symbol granularity → data.lines[].{line,content,commit,author,date,summary}
+aide symbol-history --file <path> --symbol <name> [--limit N]  # Commit history for a symbol's line range → data.commits[].{hash,author,date,message}
 ```
 
 `outline` legend: `[C]` = class/interface, `[f]` = function/method. Output is in `data.outline` as markdown.
 
 Use `--file` on `find-impact` when the symbol name is ambiguous across multiple files.
+
+`dead-code` skips dunder names, `main`, and test files by default. Always run with `--ignore` for dynamically-registered symbols (DI containers, plugin classes).
+
+`symbol-blame` and `symbol-history` require the file to be committed in git. For Python, symbol boundaries are resolved via AST (`end_lineno`); other languages use next-symbol heuristic.
+
+## Structural Search & Replace
+
+Requires `semgrep` (`pip install semgrep`). Patterns use semgrep metavariable syntax (`$X`, `$Y`, …).
+
+```
+aide structural-search --pattern '<pattern>' --lang <lang> [--root <dir>]
+aide structural-replace --pattern '<pattern>' --rewrite '<expr>' --lang <lang> [--root <dir>] [--dry-run]
+```
+
+Supported `--lang` values: `python`, `kotlin`, `typescript`, `javascript`, `java`, `go`, `rust`, `ruby`, …
+
+Examples:
+```
+aide structural-search --pattern 'if $X: return $X' --lang python --root src/
+aide structural-replace --pattern 'os.path.join($X, $Y)' --rewrite 'os.path.join($X, $Y)' --lang python --dry-run
+```
+
+Always use single quotes around patterns in the shell to prevent `$X` from being expanded.
 
 ## Which move command to use
 

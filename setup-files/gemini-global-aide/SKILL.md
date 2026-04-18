@@ -51,6 +51,27 @@ Inspection: Find semantic symbol usages.
 Inspection: Identify files and tests impacted by a symbol change.
 - **Invoke**: `aide find-impact <symbol> [--root <dir>]`
 
+### `dead-code`
+Inspection: Find unreferenced top-level symbols (classes, functions).
+- **Invoke**: `aide dead-code [--root <dir>] [--ignore <glob-patterns>]`
+- Use `--ignore '*Plugin,*Adapter'` to skip dynamically-registered symbols.
+
+### `symbol-blame`
+Git blame at symbol granularity — who last touched each line of a symbol and why.
+- **Invoke**: `aide symbol-blame --file <path> --symbol <name>`
+
+### `symbol-history`
+Full commit history for a symbol's line range.
+- **Invoke**: `aide symbol-history --file <path> --symbol <name> [--limit N]`
+
+### `structural-search`
+AST-aware pattern search via semgrep. Requires `pip install semgrep`.
+- **Invoke**: `aide structural-search --pattern '<pattern>' --lang <lang> [--root <dir>]`
+
+### `structural-replace`
+AST-aware pattern replace via semgrep. Use `--dry-run` to preview.
+- **Invoke**: `aide structural-replace --pattern '<pattern>' --rewrite '<expr>' --lang <lang> [--root <dir>] [--dry-run]`
+
 ### `change-signature`
 Refactor: Update function definition and call sites.
 - **Invoke**: `aide change-signature <symbol> --add-param <def> --default-value <val> [-n]`

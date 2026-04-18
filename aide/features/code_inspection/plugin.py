@@ -28,6 +28,12 @@ class CodeInspectionPlugin:
         parser_impact.add_argument("--format", default="json", choices=["json", "text"], help="Output format")
         parser_impact.set_defaults(func=lambda args: self.handle_find_impact(args, context))
 
+        # Dead Code Command
+        parser_dead = subparsers.add_parser("dead-code", help="Find unreferenced top-level symbols")
+        parser_dead.add_argument("--root", default=".", help="Root directory to scan (default: .)")
+        parser_dead.add_argument("--ignore", default="", help="Comma-separated name patterns to skip (e.g. '*Plugin,*Adapter')")
+        parser_dead.set_defaults(func=lambda args: self.handle_dead_code(args, context))
+
     def handle_outline(self, args, context: Context):
         use_case = OutlineUseCase(context.file_system, context.language_parser)
         outline_data = use_case.execute(args.pattern)
@@ -66,6 +72,19 @@ class CodeInspectionPlugin:
             }
         }
         print(json.dumps(payload, indent=2))
+
+    def handle_dead_code(self, args, context: Context):
+        from aide.features.code_inspection.application.find_dead_code import FindDeadCodeUseCase
+        ignore_patterns = [p.strip() for p in args.ignore.split(",") if p.strip()]
+        dead = FindDeadCodeUseCase(context.file_system, context.language_parser).execute(args.root, ignore_patterns)
+        print(json.dumps({
+            "success": True,
+            "message": f"Found {len(dead)} potentially dead symbol(s).",
+            "data": {
+                "root": args.root,
+                "dead_symbols": [{"name": s.name, "kind": s.kind, "file": s.file, "line": s.line} for s in dead],
+            },
+        }, indent=2))
 
     def handle_find_impact(self, args, context: Context):
         from aide.features.code_inspection.application.find_impact import FindImpactUseCase

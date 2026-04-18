@@ -1,0 +1,9 @@
+LICENSE
+README.md
+pyproject.toml
+aide/__init__.py
+aide_cli.egg-info/PKG-INFO
+aide_cli.egg-info/SOURCES.txt
+aide_cli.egg-info/dependency_links.txt
+aide_cli.egg-info/requires.txt
+aide_cli.egg-info/top_level.txt
