@@ -35,10 +35,20 @@ aide <refactor-command> ... --dry-run
 aide <refactor-command> ... --verify
 ```
 
+## Path rules
+
+AIDE jails all file access to the directory it is invoked from. Always run it from the **project root**.
+
+- **Concrete file/dir**: pass an absolute path or a relative path that exists — AIDE resolves and walks it directly.
+  `aide outline /abs/path/to/file.py`  or  `aide outline src/domain/entity.py`
+- **Glob pattern**: pass a shell glob (`*.py`, `**/*.kt`) — AIDE walks from `.` and matches against it.
+  `aide outline "**/*.py"`
+- Relative glob patterns (e.g. `src/**/*.py`) match against absolute walk output and will return 0 results — use `--root src` or an absolute-path prefix instead.
+
 ## Inspection
 
 ```
-aide outline "<glob>"                                # Symbol map — use ** for recursive, e.g. "**/*.py"
+aide outline "<glob-or-path>"                        # Symbol map — use ** for recursive, e.g. "**/*.py"
 aide read <file> [--selection start:end]             # Line-numbered content (--selection is 1-based, inclusive)
 aide usages <symbol> [--root <dir>]                 # Usages → data.usages: ["file:line:col", ...]
 aide find-impact --symbol <name> [--file <file>]    # data.impacted_files / data.impacted_tests

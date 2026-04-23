@@ -12,10 +12,16 @@ class OutlineUseCase:
     def execute(self, file_pattern: str) -> str:
         output = []
         found_files = False
-        
-        # Start from root (which is where aide.py runs)
-        for file_path in self.file_system.walk_files("."): 
-            if fnmatch.fnmatch(os.path.basename(file_path), file_pattern) or fnmatch.fnmatch(file_path, file_pattern):
+
+        # If the pattern resolves to an existing path within the jail, walk it directly.
+        # This handles both absolute paths and relative paths that point to real files/dirs,
+        # avoiding the fnmatch-vs-absolute-path mismatch when walking from ".".
+        resolved = os.path.abspath(file_pattern)
+        direct_walk = self.file_system.path_exists(resolved)
+        walk_root = resolved if direct_walk else "."
+
+        for file_path in self.file_system.walk_files(walk_root):
+            if direct_walk or fnmatch.fnmatch(os.path.basename(file_path), file_pattern) or fnmatch.fnmatch(file_path, file_pattern):
                 found_files = True
                 output.append(f"## File: {file_path}")
                 
