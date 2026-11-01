@@ -1,101 +1,105 @@
-# a-i-d-e - Agent Interface for Deterministic Editing
-AIDE is a specialized CLI tool designed to empower AI Agents with **deterministic code analysis, refactoring, and generation**. While it runs in a standard terminal, its only "users" are agents. 
+# a-i-d-e — Agent Interface for Deterministic Editing
 
-AIDE acts as a **structural scalpel**, allowing agents to perform high-stakes architectural migrations to **Clean Architecture** and **Capability-centric DDD** with mathematical stability and zero risk via automated test-verification and instant rollback.
+Deterministic, test-verified refactoring for AI agents — Clean Architecture and capability-centric DDD.
 
-## The Structural Scalpel
+## The problem
 
-LLMs are exceptional at drafting logic but often struggle with large-scale structural refactoring. Moving a symbol across packages or changing a signature project-wide can easily lead to "hallucinated" imports or broken references.
+Coding agents refactor with `grep` and text edits. That works for a single file. It breaks down as soon as a change crosses file boundaries:
 
-AIDE solves this by providing a hybrid intelligence layer:
-1. **Deterministic Execution**: Uses native AST (Python) and robust Regex parsers to perform precise, machine-stable code modifications.
-2. **Agentic Interface**: Returns structured JSON payloads specifically designed for agent consumption, not human reading.
-3. **Atomic Safety**: All refactoring commands support the `--verify` flag, which executes your test suite and **auto-reverts every change** if a single test fails.
+- A class moves to another package, and half of the imports still point at the old location.
+- A function gains a parameter, and some call sites are missed because the search pattern was slightly off.
+- A rename hits `UserService` but also `UserServiceTest` and a string literal that happened to match.
 
-## Navigator's Guide (Quick Setup)
+The agent then spends its next turns chasing compile errors it introduced itself — or worse, the breakage only shows up in a file it never looked at.
 
-AIDE is designed for zero-friction integration. Choose the best setup for your environment:
+## The solution
 
-### Setup Options
+AIDE is a CLI whose only users are agents. Instead of editing text, the agent asks AIDE to perform a structural operation, and AIDE does it deterministically:
 
-#### Option A: Project-Local (for local agents in general)
-Clone or copy the `a-i-d-e/` directory into your project root.
-1.  **Authorize**: `chmod +x a-i-d-e/aide.py`
-2.  **Instruct**: Activate the **Orchestrator** by adding [skills/project-injection/SKILL.md](./skills/project-injection/SKILL.md) to your project rules.
+1. **Structural, not textual.** Python is parsed with the native `ast` module, C# and Rust with tree-sitter, other languages with dedicated per-language patterns. Moves, renames and signature changes update every reference, not just the ones a search pattern found.
+2. **Test-verified and atomic.** Every refactoring command accepts `--verify`: AIDE applies the change, runs the project's test suite, and reverts every touched file if a single test fails. `--dry-run` shows the plan without writing.
+3. **Built for agents.** Output is structured JSON, not terminal prose, so the agent can act on results directly.
+4. **Jailed.** All file access goes through a path-boundary jail. Any attempt to read or write outside the working directory aborts with a `SecurityError`.
 
-#### Option B: Extension for Gemini
-Make AIDE available as a first-class tool across all your workspaces. This allows agents to use `@aide` from anywhere.
+## Installation
+
+Requires Python 3.12+.
+
 ```bash
-python3 scripts/install_global.py
-```
-This installs AIDE to `~/.local/share/aide` and creates a global `aide` shim in `~/.local/bin`. After installation, register the **Global Skill** by adding [skills/global-aide/SKILL.md](./skills/global-aide/SKILL.md) to your agent's memory.
-
-
-### Verify Installation
-Run the health check to ensure everything is ready:
-```bash
-# For Global
-aide --help
-
-# For Project-Local
-python3 a-i-d-e/check-aide.py
+git clone https://github.com/avataristvan/a-i-d-e.git
+cd a-i-d-e
+pip install -e .
+python3 scripts/install_global.py          # interactive: claude | gemini | all
 ```
 
-### Extension for Gemini 
-To enable AIDE as a first-class tool in Gemini:
+The installer copies AIDE to `~/.local/share/aide`, creates an `aide` shim in `~/.local/bin`, and registers the agent skill:
 
-1.  **Run the Installer**: `python3 scripts/install_global.py`
-2.  **Register Natively**: Create `~/.gemini/extensions/aide-extension/gemini-extension.json` using the template at `~/.local/share/aide/gemini-extension.json`.
-3.  **Restart Gemini**: a-i-d-e will then be recognized as a first-class extension.
+- **Claude Code:** installs the skill to `~/.claude/skills/aide` ([source](./setup-files/claude-global-aide/SKILL.md)).
+- **Gemini CLI:** prepares the extension manifest; the installer prints the two commands to copy it to `~/.gemini/extensions/aide-extension` ([source](./setup-files/gemini-global-aide/)).
 
-## Core Capabilities
+**Project-local alternative:** copy the repository into your project and add [setup-files/project-injection/SKILL.md](./setup-files/project-injection/SKILL.md) to the project's agent rules.
 
-- **`outline`**: structural code discovery (classes, methods, symbols).
-- **`read`**: line-numbered code retrieval for precise context.
-- **`cleanup`**: automated hygiene (e.g., unused import removal).
-- **`audit`**: architectural health checks against stack-specific rules (Kotlin/Next.js).
-- **`move-package`**: automated package refactoring with full reference updates.
-- **`extract`**: extract code block to new function with variable analysis.
-- **`usages`**: find semantic usages of a symbol across the project.
-- **`find-impact`**: analyze imports and structure to identify all files and tests functionally impacted by a symbol change.
-- **`change-signature`**: update function signatures and all call sites safely (Multi-language).
-- **`move-symbol`**: move top-level functions/classes to new files (Multi-language).
-- **`rename-symbol`**: rename a symbol project-wide safely using accurate word boundaries.
-- **`extract-interface`**: extract a new interface from a class and automatically implement it.
+Verify:
 
-> **Note:** All AIDE refactoring commands (`move-package`, `extract`, `change-signature`, `move-symbol`, `rename-symbol`, `extract-interface`) support the **`--verify`** flag. When passed, AIDE performs the refactoring, automatically executes the project test suite, and instantly auto-reverts all file changes if any tests fail—providing zero-risk atomic refactoring.
+```bash
+aide --help                # global install
+python3 check-aide.py      # health check
+```
 
-### Code & Test Generation
-- **`scaffold-feature`**: deterministically scaffold Clean Architecture domain, application, and infra layers.
-- **`implement-interface`**: mechanically inject missing method stubs from interfaces into concrete classes.
-- **`project-dto`**: automatically generate a DTO and a 1:1 schema mapping function from a Domain Entity.
-- **`register-dependency`**: safely append an import and a DI binding statement cleanly into registry files.
-- **`generate-tests` & `scaffold-mocks`**: build mock topologies and output JSON scaffolding to prepare test environments.
+## Commands
 
+**Inspection**
+- `outline` — classes, functions and symbols of a file or glob
+- `read` — line-numbered file content for precise context
+- `usages` — semantic usages of a symbol across the project
+- `find-impact` — files and tests affected by changing a symbol
+- `dead-code` — symbols without usages
+- `structural-search` / `structural-replace` — pattern search and rewrite on code structure
+- `symbol-blame` / `symbol-history` — git history of a single symbol
 
-### Agentic Test Execution
-- **`test`**: wrap test execution to return structured JSON payloads to agents, filtering out noisy terminal traces.
-- **`audit-fixtures`**: scan pytest setups and mathematically report unused/redundant fixtures.
-- **`test-audit`**: run internal coverage tools and emit specific line gaps for agent review.
+**Refactoring** (all support `--verify` and `--dry-run`)
+- `move-symbol` — move a top-level function or class to another file
+- `move-package` / `move-file` — move code and update all references
+- `rename-symbol` — project-wide rename on word boundaries
+- `change-signature` — add a parameter and update all call sites
+- `extract` — extract a code block into a new function, with variable analysis
+- `extract-interface` — extract an interface from a class and implement it
+- `update-references` — repair references after a manual move
 
-## Supported Languages
+**Generation**
+- `scaffold-feature` — domain, application and infrastructure layers for a new capability
+- `implement-interface` — inject missing method stubs into a class
+- `project-dto` — DTO plus 1:1 mapping function from a domain entity
+- `register-dependency` — add an import and a DI binding to a registry file
+- `generate-tests` / `scaffold-mocks` — test and mock scaffolding
 
-- **Kotlin**: Full refactoring support including `move-package` and `cleanup`.
-- **TypeScript / JavaScript**: Native ESM support for `move-symbol`, `extract`, and `change-signature`.
-- **Python**: Self-hosting ready. Supports `move-symbol`, `extract`, and `change-signature`.
-- **C#, Rust, Go, C++, Scala, Ruby**: Native support for `move-symbol`, `extract`, and `change-signature`.
+**Quality**
+- `cleanup` — unused import removal
+- `audit` — architecture rules for Kotlin and Next.js stacks
+- `test` — run tests and return structured JSON instead of raw traces
+- `test-audit` / `audit-fixtures` — coverage gaps and unused pytest fixtures
 
-## Philosophy
+## Supported languages
 
-AIDE follows a **Safe and Deterministic** philosophy. It avoids common LLM pitfalls by employing a hybrid intelligence architecture: a **Composite Language Parser** routes structurally complex languages like Python to native Abstract Syntax Tree (AST) engines (`ast`), while falling back to highly robust Regex parsers for other stacks. This ensures refactoring results are mathematically stable and machine-parsable.
+| Language | Parser | Notes |
+|---|---|---|
+| Python | `ast` | Precise nested symbols; AIDE refactors itself |
+| Kotlin | patterns | Including `move-package`, `change-signature` and `cleanup` |
+| TypeScript / JavaScript | patterns | ESM imports |
+| C#, Rust | tree-sitter | |
+| Go, C++, Scala, Ruby | patterns | |
 
-### Security by Default
-AIDE is designed to run autonomously on behalf of an AI agent. To prevent malicious prompt-injection or repository traversal attacks, all file operations (`read`, `extract`, `move-symbol`, `test`, etc.) are intercepted by a mandatory **Path Boundary Jail** within the core `OsFileSystem`. If an agent attempts to access files outside the current working execution directory (e.g. `/etc/passwd`), AIDE halts execution immediately with a `SecurityError`.
+## Architecture
+
+AIDE is a plugin-based CLI built on Clean Architecture. `aide.py` wires a small DI container, registers the language parsers and loads every feature plugin under `aide/features/` (one folder per capability: inspection, refactoring, generation, cleanup, testing, audit). Adding a command means adding a use case and binding it in the capability's `plugin.py` — see [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 ## Testing
 
-AIDE is fully tested using `pytest`. To run the suite:
 ```bash
+pip install -e .[dev]
 pytest tests/ -v
 ```
-See `CONTRIBUTING.md` for details on adding new tests.
+
+## License
+
+MIT — see [LICENSE](./LICENSE).

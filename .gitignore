@@ -13,3 +13,10 @@ build/
 .idea/
 *.log
 
+
+# Local artifacts
+*.egg-info/
+*.iml
+*.pid
+output.txt
+.report.json

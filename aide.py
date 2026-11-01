@@ -14,7 +14,7 @@ from aide.parsing.infrastructure.ast_parsers import AstPythonParser
 from aide.plugin_system.infrastructure.plugin_loader import PluginLoader
 
 def main():
-    parser = argparse.ArgumentParser(description="a-i-d-e: The AI's IDE (Plugin Architecture)")
+    parser = argparse.ArgumentParser(description="a-i-d-e: Agent Interface for Deterministic Editing")
     subparsers = parser.add_subparsers(dest="command", help="Available commands")
 
     parser.add_argument("--root", default=".", help="Project root (default: current directory)")
