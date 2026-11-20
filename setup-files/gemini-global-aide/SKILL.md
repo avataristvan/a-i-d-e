@@ -78,7 +78,9 @@ Refactor: Update function definition and call sites.
 
 ### `move-symbol`
 Refactor: Move top-level symbol to another file.
-- **Invoke**: `aide move-symbol <symbol> --source <src> --dest <dest> [-n]`
+- **Invoke**: `aide move-symbol <symbol[,symbol...]> --source <src> --dest <dest> [-n]`
+
+**TypeScript/JavaScript (ES modules):** `move-symbol` and `move-file` resolve imports like the compiler: tsconfig `paths` aliases (`@/…`), relative paths, either quote style, multi-symbol and `type` imports, `export … from`, dynamic `import()`, and `vi.mock`/`jest.mock` paths. Run them from the project root (where `tsconfig.json` lives). `move-symbol` accepts several comma-separated symbols. It also moves `let`/`const` declarations and the non-exported helpers that only the moved code uses, copies only the import bindings that code needs, splits importer statements that also import names which stay behind, and adds a back-import (`import { type X }` for interfaces and type aliases) where the source still uses a moved name. `move-file` takes a target file path as well as a directory, and rewrites the moved file's own relative imports. `-n` lists every planned edit per file under `data.edits`. Cases it cannot rewrite safely (namespace imports, `export *`, mocks of the source module) are reported in `data.warnings`.
 
 ### `rename-symbol`
 Refactor: Rename symbol project-wide safely.

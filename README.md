@@ -60,6 +60,7 @@ python3 check-aide.py      # health check
 **Refactoring** (all support `--verify` and `--dry-run`)
 - `move-symbol` — move a top-level function or class to another file
 - `move-package` / `move-file` — move code and update all references
+  (TS/JS: resolves tsconfig `paths` aliases, relative imports, `type` imports and `vi.mock` paths; `-n` lists every planned edit)
 - `rename-symbol` — project-wide rename on word boundaries
 - `change-signature` — add a parameter and update all call sites
 - `extract` — extract a code block into a new function, with variable analysis

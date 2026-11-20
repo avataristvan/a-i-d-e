@@ -74,7 +74,7 @@ class RefactorPlugin:
         # aide refactor move-file
         mv_file_parser = subparsers.add_parser("move-file", help="Move one or more files and update their internal packages and project-wide references")
         mv_file_parser.add_argument("source", help="Comma-separated list of source file paths")
-        mv_file_parser.add_argument("dest_dir", help="Destination directory path")
+        mv_file_parser.add_argument("dest_dir", help="Destination directory path (TS/JS: may also be the target file path when moving a single file)")
         mv_file_parser.add_argument("--src-root", default="app/src/main/java", help="Source root directory for JVM package inference")
         mv_file_parser.add_argument("--root", default=".", help="Project root")
         mv_file_parser.add_argument("--dry-run", "-n", action="store_true", help="Preview changes without writing to files")
@@ -83,11 +83,15 @@ class RefactorPlugin:
 
     def handle_move_file(self, args, context: Context):
         from aide.features.code_refactoring.application.move_file import MoveFileUseCase
-        
+        from aide.features.code_refactoring.application.esm import is_esm_file
+
+        sources = [s.strip() for s in args.source.split(',')]
+        if all(is_esm_file(s) for s in sources):
+            return self._handle_move_esm_file(args, context, sources)
+
         reverted = False
         if getattr(args, "verify", False): context.file_system.start_transaction()
         
-        sources = [s.strip() for s in args.source.split(',')]
         use_case = MoveFileUseCase(context.file_system, context.strategy_provider)
         res = use_case.execute(sources, args.dest_dir, args.root, args.src_root, dry_run=args.dry_run)
         
@@ -105,6 +109,63 @@ class RefactorPlugin:
                 "sources": sources,
                 "dest_dir": args.dest_dir,
                 "reverted": reverted
+            }
+        }
+        print(json.dumps(result, indent=2))
+
+    def _apply_esm_plan(self, args, context: Context, plan) -> tuple[bool, bool, str | None]:
+        """Write the plan unless dry-run; with --verify inside a transaction. Returns (success, reverted, message)."""
+        if args.dry_run:
+            return True, False, "Preview (No changes made)"
+        if getattr(args, "verify", False):
+            context.file_system.start_transaction()
+        plan.apply(context.file_system)
+        return self._verify_and_commit(args, context, args.root)
+
+    def _handle_move_esm_file(self, args, context: Context, sources: list[str]):
+        from aide.features.code_refactoring.application.move_esm_file import MoveEsmFileUseCase
+
+        plan = MoveEsmFileUseCase(context.file_system).plan(sources, args.dest_dir, args.root)
+        if plan.errors:
+            success, reverted, message = False, False, "; ".join(plan.errors)
+        else:
+            success, reverted, message = self._apply_esm_plan(args, context, plan)
+        result = {
+            "success": success,
+            "message": message or "Success",
+            "data": {
+                "files_moved": len(plan.moves),
+                "files_changed": plan.files_changed,
+                "total_replacements": plan.total_edits,
+                "dry_run": args.dry_run,
+                "reverted": reverted,
+                **plan.preview(os.path.abspath(args.root)),
+            }
+        }
+        print(json.dumps(result, indent=2))
+
+    def _handle_move_esm_symbol(self, args, context: Context):
+        from aide.features.code_refactoring.application.move_esm_symbol import MoveEsmSymbolUseCase, MoveSymbolError
+
+        symbols = [s.strip() for s in args.symbol.split(",") if s.strip()]
+        try:
+            plan = MoveEsmSymbolUseCase(context.file_system).plan(args.source, symbols, args.dest, args.root)
+        except MoveSymbolError as e:
+            print(json.dumps({"success": False, "message": str(e), "data": {"symbol": args.symbol, "dry_run": args.dry_run}}, indent=2))
+            return
+        success, reverted, message = self._apply_esm_plan(args, context, plan)
+        result = {
+            "success": success,
+            "message": message or "Move complete.",
+            "data": {
+                "symbols": plan.symbols,
+                "helpers_moved_along": plan.helpers,
+                "source": args.source,
+                "dest": args.dest,
+                "files_changed": plan.files_changed,
+                "dry_run": args.dry_run,
+                "reverted": reverted,
+                **plan.preview(os.path.abspath(args.root)),
             }
         }
         print(json.dumps(result, indent=2))
@@ -306,6 +367,10 @@ class RefactorPlugin:
 
     def handle_move_symbol(self, args, context: Context):
         from aide.features.code_refactoring.application.move_symbol import MoveSymbolUseCase
+        from aide.features.code_refactoring.application.esm import is_esm_file
+
+        if is_esm_file(args.source):
+            return self._handle_move_esm_symbol(args, context)
         
         reverted = False
         if getattr(args, "verify", False): context.file_system.start_transaction()
