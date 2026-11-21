@@ -1,0 +1,12 @@
+- Move the ESM scanner and top-level declaration parser (aide/features/code_refactoring/application/esm.py) to aide/parsing/ and let TypeScriptLanguageStrategy use them instead of its line heuristics
+- Give FileSystemPort is_file/is_dir so move_esm_file.py, esm.py (_probe), move_file.py and clone_symbol.py stop calling os.path directly past the path jail
+- Register .mts/.cts/.mjs/.cjs in StrategyProvider; ESM routing in the move commands uses its own extension list (esm.ESM_EXTENSIONS)
+- One edit model: esm TextEdit/EditSet next to workspace_edit EditPlan; unify once the LSP work is committed
+- ESM declaration parser misreads a function with an object-literal return type (`function f(): {…} {`) and a class with object types in its generics
+- Semantic rename-symbol for non-TS languages through the LSP client's textDocument/rename (pyright, clangd, kotlin-lsp), reusing WorkspaceEditApplier
+- Semantic rename tests skip without a TypeScript 5.x (global typescript is 7, no JS API); vendor a test dependency or document AIDE_TEST_TYPESCRIPT in CONTRIBUTING
+- move_package.py still calls SmartRenameUseCase without the worktree/gitignore filter
+- Gemini extension (scripts/install_gemini.py) is untested against a real Gemini CLI, which is not installed here
+- StdioLspClient.wait_until_ready returns ready at once when a server without ready_log_pattern (typescript, clangd, kotlin) has not sent $/progress begin yet; also busy-polls and mutates _active_progress unlocked
+- KotlinLanguageParser: symbols inside tree-sitter ERROR nodes are dropped; enum detection is a substring test on the modifiers text
+- find_declaration_end ignores brackets inside strings/comments and ends early after a multi-line annotation argument list
