@@ -75,6 +75,17 @@ class RefactorPlugin:
         upd_ref_parser.add_argument("--verify", action="store_true", help="Automatically run tests and revert changes if they fail")
         upd_ref_parser.set_defaults(func=lambda args: self.handle_update_references(args, context))
 
+        # aide refactor clone-symbol
+        clone_parser = subparsers.add_parser("clone-symbol", help="Clone a symbol (and its structurally-coupled extensions/declarations) into a new symbol, renaming references (Kotlin only)")
+        clone_parser.add_argument("template_symbol", help="Existing symbol to clone (class, object, interface)")
+        clone_parser.add_argument("new_symbol", help="Name for the cloned symbol")
+        clone_parser.add_argument("--file", required=True, help="File containing the template symbol")
+        clone_parser.add_argument("--substitutions", default="", help="Comma-separated extra old=new token replacements applied within the cloned blocks")
+        clone_parser.add_argument("--root", default=".", help="Project root")
+        clone_parser.add_argument("--dry-run", "-n", action="store_true", help="Preview changes without writing to files")
+        clone_parser.add_argument("--verify", action="store_true", help="Automatically run tests and revert changes if they fail")
+        clone_parser.set_defaults(func=lambda args: self.handle_clone_symbol(args, context))
+
         # aide refactor move-file
         mv_file_parser = subparsers.add_parser("move-file", help="Move one or more files and update their internal packages and project-wide references")
         mv_file_parser.add_argument("source", help="Comma-separated list of source file paths")
@@ -404,6 +415,43 @@ class RefactorPlugin:
                 "symbol": args.symbol,
                 "add_param": args.add_param,
                 "default_value": args.default_value,
+                "dry_run": args.dry_run,
+                "reverted": reverted
+            }
+        }
+        print(json.dumps(result, indent=2))
+
+    def handle_clone_symbol(self, args, context: Context):
+        from aide.features.code_refactoring.application.clone_symbol import CloneSymbolUseCase
+
+        reverted = False
+        if getattr(args, "verify", False): context.file_system.start_transaction()
+
+        substitutions = {}
+        for pair in args.substitutions.split(","):
+            pair = pair.strip()
+            if not pair:
+                continue
+            old, _, new = pair.partition("=")
+            if old and new:
+                substitutions[old.strip()] = new.strip()
+
+        use_case = CloneSymbolUseCase(context.file_system, context.strategy_provider)
+        res = use_case.execute(args.file, args.template_symbol, args.new_symbol, substitutions=substitutions, dry_run=args.dry_run)
+
+        if res.success:
+            success, reverted, msg = self._verify_and_commit(args, context, args.root)
+            res.success = success
+            if msg: res.message = msg
+
+        result = {
+            "success": res.success,
+            "message": "Preview (No changes made)" if args.dry_run and res.success else res.message,
+            "data": {
+                "template_symbol": args.template_symbol,
+                "new_symbol": args.new_symbol,
+                "file": args.file,
+                "cloned_symbols": res.cloned_symbols,
                 "dry_run": args.dry_run,
                 "reverted": reverted
             }

@@ -89,6 +89,10 @@ Refactor: Rename symbol project-wide safely.
 - **Without `--file`**: word-boundary text replacement under `--root`.
 - Both modes skip gitignored files and nested git worktrees (e.g. `.claude/worktrees/agent-*`).
 
+### `clone-symbol`
+Refactor: Clone a template symbol (class/object/interface) plus its structurally-coupled extension functions/properties and prefixed top-level declarations (e.g. `TemplatePresets`, `TemplateDefault`) into a new symbol, renaming all references. Kotlin-only for now.
+- **Invoke**: `aide clone-symbol <template> <new_name> --file <path> [--substitutions old=new,...] [-n] [--verify]`
+
 ## Code Generation Tools
 
 ### `scaffold-feature`

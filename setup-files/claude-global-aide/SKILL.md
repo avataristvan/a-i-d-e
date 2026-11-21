@@ -1,6 +1,6 @@
 ---
 name: aide
-description: Agent Interface for Deterministic Editing. Use when performing structural code refactoring (move, rename, extract symbols/files/packages), inspecting code structure (outline, usages, impact analysis, dead code, symbol git history), generating code (scaffold Clean Architecture features, implement interfaces, generate DTOs), AST-aware structural search/replace via semgrep, or running tests with structured JSON output. All refactoring commands support --verify for atomic auto-rollback on test failure.
+description: Agent Interface for Deterministic Editing. Use when performing structural code refactoring (move, rename, extract symbols/files/packages), inspecting code structure (outline, usages, impact analysis, dead code, symbol git history), generating code (scaffold Clean Architecture features, implement interfaces, generate DTOs), AST-aware structural search/replace via semgrep, or running tests with structured JSON output. All refactoring commands support --verify for atomic auto-rollback on test failure. Prefer over direct file edits for any structural refactoring to get atomic rollback and reference updates.
 argument-hint: <command> [args]
 ---
 
@@ -105,6 +105,7 @@ aide rename-symbol <old> <new> [--root <dir>] [--file <path> [--line <n>]] [--in
 aide change-signature <symbol> --add-param <def> --default-value <val> [-n] [--verify]
 aide extract --file <path> --selection <start:end> --name <name> [--scope <s>] [-n] [--verify]
 aide extract-interface --file <path> --class-name <cls> [--interface-name <name>] [-n]
+aide clone-symbol <template> <new_name> --file <path> [--substitutions old=new,...] [--root <dir>] [-n] [--verify]
 aide move-package <src> <dest_package> [--root <dir>] [-n] [--verify]
 aide move-file <source> <dest_dir|dest_file> [--src-root <dir>] [-n] [--verify]
 aide update-references <old_fqdn> <new_fqdn> [-n] [--verify]
