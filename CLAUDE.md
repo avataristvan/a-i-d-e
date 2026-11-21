@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Debugging
+
+- For OOM / resource issues in Python ML libs, check thread counts (onnxruntime, OMP_NUM_THREADS, tokenizers) before switching libraries.
+
 ## Commands
 
 ```bash

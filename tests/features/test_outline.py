@@ -13,6 +13,9 @@ class MockFileSystem:
     def read_file(self, path):
         return self.files[path]
 
+    def path_exists(self, path):
+        return path in self.files
+
 def test_outline_use_case():
     files = {
         "src/app.py": "class App:\n    def run(self):\n        pass\n",
