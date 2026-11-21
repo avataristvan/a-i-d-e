@@ -9,7 +9,7 @@ pip install -e .[dev]               # Install with dev dependencies
 pytest tests/ -v                    # Run full test suite
 pytest tests/features/test_move_symbol.py -v  # Run a single test file
 python3 check-aide.py               # Health check
-python3 scripts/install_global.py  # Install globally (aide shim + Claude Code skill + Gemini extension)
+python3 scripts/install_gemini.py  # Gemini CLI extension; Claude Code uses the aide@aide plugin (.claude-plugin/, per project)
 ```
 
 ## Architecture

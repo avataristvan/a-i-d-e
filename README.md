@@ -29,22 +29,23 @@ Requires Python 3.12+.
 git clone https://github.com/avataristvan/a-i-d-e.git
 cd a-i-d-e
 pip install -e .
-python3 scripts/install_global.py          # interactive: claude | gemini | all
 ```
 
-The installer copies AIDE to `~/.local/share/aide`, creates an `aide` shim in `~/.local/bin`, and registers the agent skill:
-
-- **Claude Code:** installs the skill to `~/.claude/skills/aide` ([source](./setup-files/claude-global-aide/SKILL.md)).
-- **Gemini CLI:** prepares the extension manifest; the installer prints the two commands to copy it to `~/.gemini/extensions/aide-extension` ([source](./setup-files/gemini-global-aide/)).
-
-The `aide` shim runs that installed copy, not your clone: re-run the installer after changing the code. In a non-interactive shell, pass the target as an argument (`python3 scripts/install_global.py claude`).
+- **Claude Code:** the repository is a plugin marketplace. Register it once, then enable the plugin per project:
+  ```bash
+  claude plugin marketplace add /path/to/a-i-d-e
+  cd /path/to/your-project && claude plugin install aide@aide --scope project
+  ```
+  In projects that enable it, Claude Code puts the plugin's `bin/` on the shell PATH (so `aide` runs your clone directly, no re-install after changes) and loads the skill ([source](./setup-files/claude-global-aide/SKILL.md)).
+- **Gemini CLI:** `python3 scripts/install_gemini.py` writes the extension to `~/.gemini/extensions/aide-extension`; its context file points Gemini at this clone's `bin/aide` ([source](./setup-files/gemini-global-aide/)).
+- **Terminal:** `/path/to/a-i-d-e/bin/aide`, or an alias for it.
 
 **Project-local alternative:** copy the repository into your project and add [setup-files/project-injection/SKILL.md](./setup-files/project-injection/SKILL.md) to the project's agent rules.
 
 Verify:
 
 ```bash
-aide --help                # global install
+bin/aide --help            # from the clone
 python3 check-aide.py      # health check
 ```
 

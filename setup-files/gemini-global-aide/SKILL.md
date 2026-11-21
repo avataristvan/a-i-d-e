@@ -1,13 +1,13 @@
 ---
 name: a-i-d-e-global
 description: Agent Interface for Deterministic Editing (Global CLI Tool)
-binary: aide
+binary: {{AIDE_BIN}}
 ---
 
 # a-i-d-e (Global)
 
 CLI tool for deterministic file operations & refactoring.
-Available everywhere on this system via the `aide` command.
+Run it as `{{AIDE_BIN}}` from the project root; the bare `aide` command is not on PATH. Wherever this file writes `aide <command>`, use that path.
 
 Supported Languages: **Kotlin, TypeScript, JavaScript, Python, C#, Rust, Go, C++, Scala, Ruby**.
 
