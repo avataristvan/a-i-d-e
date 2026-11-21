@@ -64,6 +64,46 @@ class TestRunnerPort(ABC):
         """Runs tests and returns a dict with 'success', 'summary', 'failures', 'is_implemented'."""
         pass
 
+class LanguageServerPort(ABC):
+    """A running language server. Positions are LSP-native: 0-based line and character.
+    Results are raw LSP structures (DocumentSymbol, Location, WorkspaceEdit, ...)."""
+
+    @abstractmethod
+    def open_document(self, file_path: str, text: str | None = None) -> None:
+        """Sends didOpen; reads the file from disk when text is None."""
+        pass
+
+    @abstractmethod
+    def close_document(self, file_path: str) -> None:
+        pass
+
+    @abstractmethod
+    def document_symbols(self, file_path: str) -> list[dict]:
+        pass
+
+    @abstractmethod
+    def workspace_symbols(self, query: str) -> list[dict]:
+        pass
+
+    @abstractmethod
+    def references(self, file_path: str, line: int, character: int) -> list[dict]:
+        pass
+
+    @abstractmethod
+    def rename(self, file_path: str, line: int, character: int, new_name: str) -> dict | None:
+        """Returns the server's WorkspaceEdit without applying it."""
+        pass
+
+    @abstractmethod
+    def stop(self) -> None:
+        pass
+
+class LanguageServerProviderPort(ABC):
+    @abstractmethod
+    def for_file(self, file_path: str) -> LanguageServerPort | None:
+        """Returns a started server for the file's language, or None if none is configured/installed."""
+        pass
+
 class LanguageStrategy(ABC):
     @abstractmethod
     def extract_imports_and_header(self, lines: list[str]) -> tuple[list[str], str | None]:
