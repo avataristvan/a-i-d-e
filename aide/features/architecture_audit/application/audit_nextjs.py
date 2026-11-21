@@ -66,7 +66,7 @@ class AuditNextjsUseCase:
                         if "../application" in imp or "application/" in imp:
                             violations.append(f"{filename} : Infrastructure: Cannot import Application (imports '{imp}')")
 
-                # --- Rule Set 3: Okkularion Critical Path (Low-Latency) ---
+                # --- Rule Set 3: Critical Path (Low-Latency) ---
                 
                 if (filename.endswith("Engine.ts") or filename.endswith("Controller.ts")) and not filename.endswith(".tsx"):
                      for imp in imports:
@@ -77,7 +77,7 @@ class AuditNextjsUseCase:
                 violations.append(f"{rel_path}: Error reading file: {e}")
 
         success = len(violations) == 0
-        message = "Next.js/Okkularion Architecture is Clean!" if success else f"Found {len(violations)} Violations"
+        message = "Next.js Architecture is Clean!" if success else f"Found {len(violations)} Violations"
         
         return {
             "success": success,

@@ -7,7 +7,7 @@ class RefactorPlugin:
     def register(self, subparsers: _SubParsersAction, context: Context) -> None:
         parser = subparsers.add_parser("move-package", help="Move a package/module and update references")
         parser.add_argument("src", help="Source package path relative to src-root (e.g. domain/macro)")
-        parser.add_argument("dest_package", help="Destination package/module logic path (e.g. com.istvan.ExoDeck.features.macro.domain or my_app.features.macro)")
+        parser.add_argument("dest_package", help="Destination package/module logic path (e.g. com.example.app.features.macro.domain or my_app.features.macro)")
         parser.add_argument("--root", default=".", help="Project root")
         parser.add_argument("--src-root", default="app/src/main/java", help="Source root directory containing the packages")
         parser.add_argument("--dry-run", "-n", action="store_true", help="Preview changes without writing to files")
