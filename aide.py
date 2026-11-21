@@ -38,7 +38,22 @@ def main():
         composite_parser.register(".rs", RustLanguageParser())
     except ImportError:
         pass # Fallback to regex parser if tree-sitter C extensions fail
-        
+
+    try:
+        from aide.parsing.infrastructure.kotlin_parser import KotlinLanguageParser
+        composite_parser.register(".kt", KotlinLanguageParser())
+    except ImportError:
+        pass # Fallback to regex parser if tree-sitter-kotlin is not installed
+
+    try:
+        from aide.parsing.infrastructure.clangd_parser import CLANGD_EXTENSIONS, ClangdCppParser, is_clangd_available
+        if is_clangd_available():
+            clangd_parser = ClangdCppParser()
+            for ext in CLANGD_EXTENSIONS:
+                composite_parser.register(ext, clangd_parser)
+    except ImportError:
+        pass
+
     context = Context(file_system=file_system, language_parser=composite_parser)
 
     # 2. Load Plugins (from features directory)

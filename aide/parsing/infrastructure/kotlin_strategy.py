@@ -1,6 +1,7 @@
 import re
 import os
 from typing import Any, Tuple, Callable, Generator
+from aide.core.domain.declaration_extent import find_declaration_end
 from aide.core.domain.ports import LanguageStrategy
 
 class KotlinLanguageStrategy(LanguageStrategy):
@@ -57,26 +58,11 @@ class KotlinLanguageStrategy(LanguageStrategy):
             else:
                 break
                 
-        balance = 0
-        found_open = False
-        end_line = -1
-        
-        for i in range(start_line - 1, len(lines)):
-            line = lines[i]
-            for char in line:
-                if char == '{':
-                    balance += 1
-                    found_open = True
-                elif char == '}':
-                    balance -= 1
-            
-            if found_open and balance == 0:
-                end_line = i + 1
-                break
-                
-        if end_line == -1:
-             return None, None
-             
+        end_index = find_declaration_end(lines, start_line - 1)
+        if end_index is None:
+            return None, None
+        end_line = end_index + 1
+
         return start_line, end_line
 
     def get_import_statement(self, package: str, symbol: str) -> str:

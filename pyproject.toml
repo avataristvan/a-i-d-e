@@ -15,7 +15,8 @@ authors = [
 dependencies = [
   "tree-sitter==0.23.2",
   "tree-sitter-c-sharp==0.23.1",
-  "tree-sitter-rust==0.23.2"
+  "tree-sitter-rust==0.23.2",
+  "tree-sitter-kotlin==1.1.0"
 ]
 
 [project.optional-dependencies]
@@ -30,8 +31,8 @@ search = [
 [tool.setuptools]
 packages = ["aide"]
 
-[tool.pytest.ini_options]
 [tool.setuptools.package-data]
 aide = ["**/*.cjs"]
 
+[tool.pytest.ini_options]
 testpaths = ["tests"]

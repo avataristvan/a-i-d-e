@@ -24,6 +24,13 @@ def check():
     except ImportError:
         print("⚠️  Warning: tree-sitter not found. AST parsing will use regex fallback.")
 
+    from aide.parsing.infrastructure.clangd_parser import is_clangd_available
+    if is_clangd_available():
+        print("✅ clangd: OK (C/C++ LSP parsing enabled)")
+    else:
+        print("⚠️  clangd not found. C/C++ outline will use regex fallback.")
+        print("   Install: sudo pacman -S clang  (or apt/dnf equivalent)")
+
     # 4. Functional Test
     print("🧪 Running functional check...")
     try:
