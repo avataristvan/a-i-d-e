@@ -1,116 +1,38 @@
 ---
-name: a-i-d-e-global
-description: Agent Interface for Deterministic Editing (Global CLI Tool)
+name: aide
+description: Deterministic multi-file refactoring CLI: move/rename/extract symbols, files and packages with reference updates and --verify auto-rollback; plus code inspection (outline, usages, impact, dead code, symbol history), structural search and test tooling. Prefer it over hand edits for structural refactoring.
 binary: {{AIDE_BIN}}
 ---
 
-# a-i-d-e (Global)
+# AIDE — Agent Interface for Deterministic Editing
 
-CLI tool for deterministic file operations & refactoring.
-Run it as `{{AIDE_BIN}}` from the project root; the bare `aide` command is not on PATH. Wherever this file writes `aide <command>`, use that path.
+The command is `{{AIDE_BIN}}` (the bare `aide` is not on PATH); below it is written as `aide`.
+Run it from the project root: all file access is jailed to that directory.
+Every command prints JSON `{"success": ..., "message": ..., "data": {...}}`; check `success` first.
 
-Supported Languages: **Kotlin, TypeScript, JavaScript, Python, C#, Rust, Go, C++, Scala, Ruby**.
+## Discover instead of guessing
 
-- **Security**: Operations are restricted to the project root (Path Boundary Jail).
-- **Parsing Precision**: AST-based parsing (Tree-Sitter) for Python, C#, and Rust.
+```
+aide commands               # categories (inspection, refactoring, generation, tests, ...)
+aide commands <category>    # the commands in it, one line each
+aide <command> --help       # exact arguments and usage notes; read it before first use
+```
 
-## Commands
+## Refactoring workflow
 
-### `outline`
-Structural symbol discovery.
-- **Args**: `pattern` (glob)
-- **Invoke**: `aide outline <pattern>`
+```
+aide find-impact --symbol <name>   # blast radius first
+aide <refactor-command> ... -n     # preview (dry run)
+aide <refactor-command> ... --verify   # apply; runs the tests and reverts everything if they fail
+```
+Omit `--verify` when the project has no test suite (it fails hard).
 
-### `read`
-Line-numbered file retrieval.
-- **Args**: `file` (path), `--selection <range>` (optional)
-- **Invoke**: `aide read <path> [--selection start:end]`
+## Most used
 
-### `cleanup`
-Automated code hygiene.
-- **Args**: `--path <dir>` (default: .)
-- **Invoke**: `aide cleanup [--path <path>]`
-
-### `audit`
-Architecture validation.
-- **Args**: `--stack {kotlin,nextjs}`, `--src <dir>`
-- **Invoke**: `aide audit --stack <stack> [--src <path>]`
-
-### `move-package`
-- **Invoke**: `aide move-package <src> <dest_package> [--root <p>] [-n] [--verify]`
-
-### `extract`
-Refactor: Extract code block to function.
-- **Invoke**: `aide extract --file <path> --selection <range> --name <name> [-n]`
-
-### `usages`
-Inspection: Find semantic symbol usages.
-- **Invoke**: `aide usages <symbol> [--root <dir>]`
-
-### `find-impact`
-Inspection: Identify files and tests impacted by a symbol change.
-- **Invoke**: `aide find-impact <symbol> [--root <dir>]`
-
-### `dead-code`
-Inspection: Find unreferenced top-level symbols (classes, functions).
-- **Invoke**: `aide dead-code [--root <dir>] [--ignore <glob-patterns>]`
-- Use `--ignore '*Plugin,*Adapter'` to skip dynamically-registered symbols.
-
-### `symbol-blame`
-Git blame at symbol granularity — who last touched each line of a symbol and why.
-- **Invoke**: `aide symbol-blame --file <path> --symbol <name>`
-
-### `symbol-history`
-Full commit history for a symbol's line range.
-- **Invoke**: `aide symbol-history --file <path> --symbol <name> [--limit N]`
-
-### `structural-search`
-AST-aware pattern search via semgrep. Requires `pip install semgrep`.
-- **Invoke**: `aide structural-search --pattern '<pattern>' --lang <lang> [--root <dir>]`
-
-### `structural-replace`
-AST-aware pattern replace via semgrep. Use `--dry-run` to preview.
-- **Invoke**: `aide structural-replace --pattern '<pattern>' --rewrite '<expr>' --lang <lang> [--root <dir>] [--dry-run]`
-
-### `change-signature`
-Refactor: Update function definition and call sites.
-- **Invoke**: `aide change-signature <symbol> --add-param <def> --default-value <val> [-n]`
-
-### `move-symbol`
-Refactor: Move top-level symbol to another file.
-- **Invoke**: `aide move-symbol <symbol[,symbol...]> --source <src> --dest <dest> [-n]`
-
-**TypeScript/JavaScript (ES modules):** `move-symbol` and `move-file` resolve imports like the compiler: tsconfig `paths` aliases (`@/…`), relative paths, either quote style, multi-symbol and `type` imports, `export … from`, dynamic `import()`, and `vi.mock`/`jest.mock` paths. Run them from the project root (where `tsconfig.json` lives). `move-symbol` accepts several comma-separated symbols. When a name is declared more than once (an interface and a component of the same name), pick one with `kind:Name` (`interface:Props`, `function:Props`); without it the command stops and lists the candidates in `data.warnings`. It also moves `let`/`const` declarations and the non-exported helpers that only the moved code uses, copies only the import bindings that code needs, splits importer statements that also import names which stay behind, and adds a back-import (`import { type X }` for interfaces and type aliases) where the source still uses a moved name. `move-file` takes a target file path as well as a directory, and rewrites the moved file's own relative imports. `-n` lists every planned edit per file under `data.edits`. Cases it cannot rewrite safely (namespace imports, `export *`, mocks of the source module) are reported in `data.warnings`.
-
-### `rename-symbol`
-Refactor: Rename symbol project-wide safely.
-- **Invoke**: `aide rename-symbol <old> <new> [--root <p>] [--file <path> [--line <n>]] [--in-strings] [--in-comments] [-n] [--verify]`
-- **TS/JS with `--file`**: semantic rename through the project's own TypeScript language service (tsconfig and `paths` aliases). It renames the symbol at `--file` (first occurrence, or on `--line`) and every reference that resolves to it: imports and re-exports, object keys and shorthand properties, destructuring through derived types (`ReturnType<typeof useX>`), property access. Same-named identifiers of other symbols stay; strings and comments only with `--in-strings` / `--in-comments`. Needs `node` and typescript 5.x in the project. `-n` lists each edit under `data.changes`.
-- **Without `--file`**: word-boundary text replacement under `--root`.
-- Both modes skip gitignored files and nested git worktrees (e.g. `.claude/worktrees/agent-*`).
-
-### `clone-symbol`
-Refactor: Clone a template symbol (class/object/interface) plus its structurally-coupled extension functions/properties and prefixed top-level declarations (e.g. `TemplatePresets`, `TemplateDefault`) into a new symbol, renaming all references. Kotlin-only for now.
-- **Invoke**: `aide clone-symbol <template> <new_name> --file <path> [--substitutions old=new,...] [-n] [--verify]`
-
-## Code Generation Tools
-
-### `scaffold-feature`
-- **Invoke**: `aide scaffold-feature --name <FeatureName> --stack <stack>`
-
-### `implement-interface`
-- **Invoke**: `aide implement-interface --file <path> --class-name <C> --implements <I>`
-
-### `project-dto`
-- **Invoke**: `aide project-dto --source-file <p> --entity <E> --target-file <p> --dto <D> --stack <s>`
-
-## Test Tools
-
-### `test`
-- **Invoke**: `aide test --path <dir> [--format json]`
-
-### `test-audit`
-- **Invoke**: `aide test-audit --src <src> --tests <tests>`
-
-## Global Rules
-Always use the `--verify` flag when performing refactoring commands. This ensures that any change that breaks the build or tests is automatically rolled back.
+```
+aide outline "**/*.kt"                          # symbol map
+aide usages <symbol>
+aide rename-symbol <old> <new> --file <path>    # semantic for TS/JS
+aide move-symbol <symbol> --source <src> --dest <dest>
+aide move-file <source> <dest>
+```

@@ -2,6 +2,61 @@ import json
 from argparse import _SubParsersAction
 import os
 from aide.core.context import Context
+from aide.plugin_system.infrastructure.command_catalog import add_notes
+
+_MOVE_PACKAGE_NOTES = """
+Which move command:
+  one symbol (class/function) to another file  -> move-symbol
+  one or more files to another directory       -> move-file
+  a whole package/directory                    -> move-package
+  update import paths after a manual move      -> update-references
+"""
+
+_MOVE_SYMBOL_NOTES = """
+Which move command:
+  one symbol (class/function) to another file  -> move-symbol
+  one or more files to another directory       -> move-file
+  a whole package/directory                    -> move-package
+  update import paths after a manual move      -> update-references
+
+TypeScript/JavaScript (ES modules), run from the tsconfig.json root: imports are resolved like the
+compiler (tsconfig paths aliases, relative paths, type imports, export ... from, dynamic import(),
+vi.mock/jest.mock). Several comma-separated symbols are allowed. A name declared twice (interface
+and component) needs kind:Name (interface:Props, function:Props); otherwise the command stops and
+lists candidates in data.warnings. Moves let/const declarations and helpers only the moved code
+uses, copies only the import bindings it needs, splits importer statements, and adds a back-import
+(import { type X } for types) where the source still uses a moved name. -n lists every edit under
+data.edits; unsafe cases (namespace imports, export *, mocks of the source) go to data.warnings.
+"""
+
+_RENAME_NOTES = """
+With --file on a TS/JS file: semantic rename through the project's own TypeScript (needs node and
+typescript 5.x). Renames the symbol at --file (first occurrence, or on --line) and every reference
+that resolves to it: imports, re-exports, shorthand properties, destructuring through derived types.
+Same-named identifiers of other symbols stay; strings/comments only with --in-strings/--in-comments.
+-n lists each edit under data.changes.
+Without --file: word-boundary text replacement under --root.
+Both modes skip gitignored files and nested git worktrees (e.g. .claude/worktrees/agent-*).
+"""
+
+_UPDATE_REFS_NOTES = """
+Which move command:
+  one symbol (class/function) to another file  -> move-symbol
+  one or more files to another directory       -> move-file
+  a whole package/directory                    -> move-package
+  update import paths after a manual move      -> update-references
+"""
+
+_MOVE_FILE_NOTES = """
+Which move command:
+  one symbol (class/function) to another file  -> move-symbol
+  one or more files to another directory       -> move-file
+  a whole package/directory                    -> move-package
+  update import paths after a manual move      -> update-references
+
+TypeScript/JavaScript: takes a target file path as well as a directory, resolves imports like
+move-symbol (see `aide move-symbol --help`) and rewrites the moved file's own relative imports.
+"""
 
 class RefactorPlugin:
     def register(self, subparsers: _SubParsersAction, context: Context) -> None:
@@ -12,6 +67,7 @@ class RefactorPlugin:
         parser.add_argument("--src-root", default="app/src/main/java", help="Source root directory containing the packages")
         parser.add_argument("--dry-run", "-n", action="store_true", help="Preview changes without writing to files")
         parser.add_argument("--verify", action="store_true", help="Automatically run tests and revert changes if they fail")
+        add_notes(parser, _MOVE_PACKAGE_NOTES)
         parser.set_defaults(func=lambda args: self.handle_move_package(args, context))
 
         # aide refactor extract
@@ -42,6 +98,7 @@ class RefactorPlugin:
         move_parser.add_argument("--root", default=".", help="Project root")
         move_parser.add_argument("--dry-run", "-n", action="store_true", help="Preview changes without writing to files")
         move_parser.add_argument("--verify", action="store_true", help="Automatically run tests and revert changes if they fail")
+        add_notes(move_parser, _MOVE_SYMBOL_NOTES)
         move_parser.set_defaults(func=lambda args: self.handle_move_symbol(args, context))
 
         # aide refactor rename-symbol
@@ -55,6 +112,7 @@ class RefactorPlugin:
         rename_parser.add_argument("--in-comments", action="store_true", help="Semantic rename: also rename matching occurrences in comments")
         rename_parser.add_argument("--dry-run", "-n", action="store_true", help="Preview changes without writing to files")
         rename_parser.add_argument("--verify", action="store_true", help="Automatically run tests and revert changes if they fail")
+        add_notes(rename_parser, _RENAME_NOTES)
         rename_parser.set_defaults(func=lambda args: self.handle_rename_symbol(args, context))
 
         # aide refactor extract-interface
@@ -73,6 +131,7 @@ class RefactorPlugin:
         upd_ref_parser.add_argument("--root", default=".", help="Project root")
         upd_ref_parser.add_argument("--dry-run", "-n", action="store_true", help="Preview changes without writing to files")
         upd_ref_parser.add_argument("--verify", action="store_true", help="Automatically run tests and revert changes if they fail")
+        add_notes(upd_ref_parser, _UPDATE_REFS_NOTES)
         upd_ref_parser.set_defaults(func=lambda args: self.handle_update_references(args, context))
 
         # aide refactor clone-symbol
@@ -94,6 +153,7 @@ class RefactorPlugin:
         mv_file_parser.add_argument("--root", default=".", help="Project root")
         mv_file_parser.add_argument("--dry-run", "-n", action="store_true", help="Preview changes without writing to files")
         mv_file_parser.add_argument("--verify", action="store_true", help="Automatically run tests and revert changes if they fail")
+        add_notes(mv_file_parser, _MOVE_FILE_NOTES)
         mv_file_parser.set_defaults(func=lambda args: self.handle_move_file(args, context))
 
     def handle_move_file(self, args, context: Context):

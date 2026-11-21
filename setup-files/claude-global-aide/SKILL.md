@@ -1,138 +1,37 @@
 ---
 name: aide
-description: Agent Interface for Deterministic Editing. Use when performing structural code refactoring (move, rename, extract symbols/files/packages), inspecting code structure (outline, usages, impact analysis, dead code, symbol git history), generating code (scaffold Clean Architecture features, implement interfaces, generate DTOs), AST-aware structural search/replace via semgrep, or running tests with structured JSON output. All refactoring commands support --verify for atomic auto-rollback on test failure. Prefer over direct file edits for any structural refactoring to get atomic rollback and reference updates.
+description: Deterministic multi-file refactoring CLI: move/rename/extract symbols, files and packages with reference updates and --verify auto-rollback; plus code inspection (outline, usages, impact, dead code, symbol history), structural search and test tooling. Prefer it over hand edits for structural refactoring.
 argument-hint: <command> [args]
 ---
 
 # AIDE — Agent Interface for Deterministic Editing
 
-Available via the `aide` global command. All file operations are jailed to the project root — path traversal is blocked at the OS level.
+Run it from the project root: all file access is jailed to that directory.
+Every command prints JSON `{"success": ..., "message": ..., "data": {...}}`; check `success` first.
 
-**Supported languages**: Kotlin, TypeScript, JavaScript, Python, C#, Rust, Go, C++, Scala, Ruby.
-
-## Output format
-
-Every command emits JSON to stdout:
-```json
-{"success": true, "message": "...", "data": { ... }}
-```
-Check `success` before consuming `data`. On failure, `message` contains the error.
-
-## Flags (all refactoring commands)
-- `-n` / `--dry-run` — Preview changes without writing to disk.
-- `--verify` — Run tests after refactoring; auto-revert all changes if any test fails. Omit if the project has no test suite — it will hard-fail.
-
-## Recommended workflow
+## Discover instead of guessing
 
 ```
-# 1. Understand blast radius first
-aide find-impact --symbol <name>
-
-# 2. Preview the change
-aide <refactor-command> ... --dry-run
-
-# 3. Execute atomically (only if a test suite exists)
-aide <refactor-command> ... --verify
+aide commands               # categories (inspection, refactoring, generation, tests, ...)
+aide commands <category>    # the commands in it, one line each
+aide <command> --help       # exact arguments and usage notes; read it before first use
 ```
 
-## Path rules
-
-AIDE jails all file access to the directory it is invoked from. Always run it from the **project root**.
-
-- **Concrete file/dir**: pass an absolute path or a relative path that exists — AIDE resolves and walks it directly.
-  `aide outline /abs/path/to/file.py`  or  `aide outline src/domain/entity.py`
-- **Glob pattern**: pass a shell glob (`*.py`, `**/*.kt`) — AIDE walks from `.` and matches against it.
-  `aide outline "**/*.py"`
-- Relative glob patterns (e.g. `src/**/*.py`) match against absolute walk output and will return 0 results — use `--root src` or an absolute-path prefix instead.
-
-## Inspection
+## Refactoring workflow
 
 ```
-aide outline "<glob-or-path>"                        # Symbol map — use ** for recursive, e.g. "**/*.py"
-aide read <file> [--selection start:end]             # Line-numbered content (--selection is 1-based, inclusive)
-aide usages <symbol> [--root <dir>]                 # Usages → data.usages: ["file:line:col", ...]
-aide find-impact --symbol <name> [--file <file>]    # data.impacted_files / data.impacted_tests
-aide dead-code [--root <dir>] [--ignore <patterns>] # Find unreferenced top-level symbols; --ignore accepts comma-separated globs e.g. '*Plugin,*Adapter'
-aide symbol-blame --file <path> --symbol <name>     # Git blame at symbol granularity → data.lines[].{line,content,commit,author,date,summary}
-aide symbol-history --file <path> --symbol <name> [--limit N]  # Commit history for a symbol's line range → data.commits[].{hash,author,date,message}
+aide find-impact --symbol <name>   # blast radius first
+aide <refactor-command> ... -n     # preview (dry run)
+aide <refactor-command> ... --verify   # apply; runs the tests and reverts everything if they fail
 ```
+Omit `--verify` when the project has no test suite (it fails hard).
 
-`outline` legend: `[C]` = class/interface, `[f]` = function/method. Output is in `data.outline` as markdown.
-
-Use `--file` on `find-impact` when the symbol name is ambiguous across multiple files.
-
-`dead-code` skips dunder names, `main`, and test files by default. Always run with `--ignore` for dynamically-registered symbols (DI containers, plugin classes).
-
-`symbol-blame` and `symbol-history` require the file to be committed in git. For Python, symbol boundaries are resolved via AST (`end_lineno`); other languages use next-symbol heuristic.
-
-## Structural Search & Replace
-
-Requires `semgrep` (`pip install semgrep`). Patterns use semgrep metavariable syntax (`$X`, `$Y`, …).
+## Most used
 
 ```
-aide structural-search --pattern '<pattern>' --lang <lang> [--root <dir>]
-aide structural-replace --pattern '<pattern>' --rewrite '<expr>' --lang <lang> [--root <dir>] [--dry-run]
-```
-
-Supported `--lang` values: `python`, `kotlin`, `typescript`, `javascript`, `java`, `go`, `rust`, `ruby`, …
-
-Examples:
-```
-aide structural-search --pattern 'if $X: return $X' --lang python --root src/
-aide structural-replace --pattern 'os.path.join($X, $Y)' --rewrite 'os.path.join($X, $Y)' --lang python --dry-run
-```
-
-Always use single quotes around patterns in the shell to prevent `$X` from being expanded.
-
-## Which move command to use
-
-| Goal | Command |
-|---|---|
-| Move a single symbol (class/function) to another file | `move-symbol` |
-| Move one or more files to a different directory | `move-file` |
-| Move a whole package/directory and update all references | `move-package` |
-| Bulk-update import paths after a manual move | `update-references` |
-
-**TypeScript/JavaScript (ES modules):** `move-symbol` and `move-file` resolve imports like the compiler: tsconfig `paths` aliases (`@/…`), relative paths, either quote style, multi-symbol and `type` imports, `export … from`, dynamic `import()`, and `vi.mock`/`jest.mock` paths. Run them from the project root (where `tsconfig.json` lives). `move-symbol` accepts several comma-separated symbols. When a name is declared more than once (an interface and a component of the same name), pick one with `kind:Name` (`interface:Props`, `function:Props`); without it the command stops and lists the candidates in `data.warnings`. It also moves `let`/`const` declarations and the non-exported helpers that only the moved code uses, copies only the import bindings that code needs, splits importer statements that also import names which stay behind, and adds a back-import (`import { type X }` for interfaces and type aliases) where the source still uses a moved name. `move-file` takes a target file path as well as a directory, and rewrites the moved file's own relative imports. `-n` lists every planned edit per file under `data.edits`. Cases it cannot rewrite safely (namespace imports, `export *`, mocks of the source module) are reported in `data.warnings`.
-
-**`rename-symbol`:** with `--file` on a TS/JS file it is a semantic rename through the project's own TypeScript (needs `node` and typescript 5.x): the symbol at `--file` (first occurrence, or on `--line`) plus every reference that resolves to it, including imports, shorthand properties and destructuring through derived types. Same-named identifiers of other symbols stay; strings and comments only with `--in-strings` / `--in-comments`. Without `--file` it replaces on word boundaries under `--root`. Both modes skip gitignored files and nested git worktrees (`.claude/worktrees/agent-*`).
-
-## Refactoring
-
-```
-aide move-symbol <symbol[,symbol...]> --source <src> --dest <dest> [-n] [--verify]
-aide rename-symbol <old> <new> [--root <dir>] [--file <path> [--line <n>]] [--in-strings] [--in-comments] [-n] [--verify]
-aide change-signature <symbol> --add-param <def> --default-value <val> [-n] [--verify]
-aide extract --file <path> --selection <start:end> --name <name> [--scope <s>] [-n] [--verify]
-aide extract-interface --file <path> --class-name <cls> [--interface-name <name>] [-n]
-aide clone-symbol <template> <new_name> --file <path> [--substitutions old=new,...] [--root <dir>] [-n] [--verify]
-aide move-package <src> <dest_package> [--root <dir>] [-n] [--verify]
-aide move-file <source> <dest_dir|dest_file> [--src-root <dir>] [-n] [--verify]
-aide update-references <old_fqdn> <new_fqdn> [-n] [--verify]
-```
-
-## Code Generation
-
-```
-aide scaffold-feature --name <Name> --stack <kotlin|python> [--output-dir <dir>]
-aide implement-interface --file <path> --class-name <cls> --implements <iface>
-aide register-dependency --file <path> --import-path <path> --binding <statement>
-aide project-dto --source-file <path> --entity <E> --target-file <path> --dto <D> --stack <stack>
-```
-
-## Cleanup & Architecture Audit
-
-```
-aide cleanup [--path <dir>]                          # Remove unused/duplicate imports
-aide audit --stack <kotlin|nextjs> [--src <dir>]    # Validate Clean Architecture layer rules
-```
-
-## Test Tools
-
-```
-aide test --path <dir> [--format json]
-aide generate-tests --file <path> --symbol <name> [--format json]
-aide scaffold-mocks --file <path> --class-name <name> [--format json]
-aide audit-fixtures --path <dir> [--format json]
-aide test-audit --src <src> --tests <tests> [--format json]
+aide outline "**/*.kt"                          # symbol map
+aide usages <symbol>
+aide rename-symbol <old> <new> --file <path>    # semantic for TS/JS
+aide move-symbol <symbol> --source <src> --dest <dest>
+aide move-file <source> <dest>
 ```

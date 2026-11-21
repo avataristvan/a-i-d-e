@@ -1,6 +1,29 @@
 import json
 from argparse import _SubParsersAction
 from aide.core.context import Context
+from aide.plugin_system.infrastructure.command_catalog import add_notes
+
+_OUTLINE_NOTES = """
+Run from the project root: all file access is jailed to the invocation directory.
+  concrete file/dir: absolute or existing relative path  -> aide outline src/domain/entity.py
+  glob: walks from . and matches                         -> aide outline "**/*.py"
+  relative globs like "src/**/*.py" match nothing; use --root src instead.
+Legend in data.outline (markdown): [C] class/interface, [f] function/method.
+"""
+
+_READ_NOTES = """
+--selection is 1-based and inclusive, e.g. 10:40.
+"""
+
+_IMPACT_NOTES = """
+Result: data.impacted_files, data.impacted_tests.
+Pass --file when the symbol name exists in several files. Run before any refactoring.
+"""
+
+_DEAD_CODE_NOTES = """
+Skips dunder names, main and test files. Pass --ignore for symbols registered dynamically
+(DI containers, plugin classes), e.g. --ignore '*Plugin,*Adapter'.
+"""
 from aide.features.code_inspection.application.outline import OutlineUseCase
 
 class CodeInspectionPlugin:
@@ -8,11 +31,13 @@ class CodeInspectionPlugin:
         # Outline Command
         parser_outline = subparsers.add_parser("outline", help="Show symbol outline of files")
         parser_outline.add_argument("pattern", help="File pattern (e.g. *.py)")
+        add_notes(parser_outline, _OUTLINE_NOTES)
         parser_outline.set_defaults(func=lambda args: self.handle_outline(args, context))
         
         parser_read = subparsers.add_parser("read", help="Read files with line numbers")
         parser_read.add_argument("file", help="File path")
         parser_read.add_argument("--selection", help="Line range (start:end, 1-based)")
+        add_notes(parser_read, _READ_NOTES)
         parser_read.set_defaults(func=lambda args: self.handle_read(args, context))
 
         # Usages Command
@@ -26,12 +51,14 @@ class CodeInspectionPlugin:
         parser_impact.add_argument("--symbol", required=True, help="Symbol name to analyze")
         parser_impact.add_argument("--file", help="File where the symbol is defined (optional)")
         parser_impact.add_argument("--format", default="json", choices=["json", "text"], help="Output format")
+        add_notes(parser_impact, _IMPACT_NOTES)
         parser_impact.set_defaults(func=lambda args: self.handle_find_impact(args, context))
 
         # Dead Code Command
         parser_dead = subparsers.add_parser("dead-code", help="Find unreferenced top-level symbols")
         parser_dead.add_argument("--root", default=".", help="Root directory to scan (default: .)")
         parser_dead.add_argument("--ignore", default="", help="Comma-separated name patterns to skip (e.g. '*Plugin,*Adapter')")
+        add_notes(parser_dead, _DEAD_CODE_NOTES)
         parser_dead.set_defaults(func=lambda args: self.handle_dead_code(args, context))
 
     def handle_outline(self, args, context: Context):

@@ -3,6 +3,17 @@ from argparse import _SubParsersAction
 from datetime import datetime, timezone
 
 from aide.core.context import Context
+from aide.plugin_system.infrastructure.command_catalog import add_notes
+
+_GIT_NOTES = """
+The file must be committed. Symbol boundaries: Python via AST (end_lineno), other languages
+by next-symbol heuristic. blame -> data.lines[].{line,content,commit,author,date,summary};
+history -> data.commits[].{hash,author,date,message}.
+"""
+
+_GIT_NOTES_HISTORY = """
+See `aide symbol-blame --help` for boundaries and output fields.
+"""
 from aide.features.symbol_history.domain.ports import GitPort
 
 
@@ -14,12 +25,14 @@ class SymbolHistoryPlugin:
         p = subparsers.add_parser("symbol-blame", help="Git blame at symbol granularity")
         p.add_argument("--file", required=True, help="Source file path")
         p.add_argument("--symbol", required=True, help="Symbol name (class or function)")
+        add_notes(p, _GIT_NOTES)
         p.set_defaults(func=lambda args: self._handle_blame(args, context))
 
         p = subparsers.add_parser("symbol-history", help="Commit history for a symbol's line range")
         p.add_argument("--file", required=True, help="Source file path")
         p.add_argument("--symbol", required=True, help="Symbol name (class or function)")
         p.add_argument("--limit", type=int, default=10, help="Max commits to return (default: 10)")
+        add_notes(p, _GIT_NOTES_HISTORY)
         p.set_defaults(func=lambda args: self._handle_history(args, context))
 
     def _handle_blame(self, args, context: Context) -> None:

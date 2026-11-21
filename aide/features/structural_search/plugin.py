@@ -2,6 +2,18 @@ import json
 from argparse import _SubParsersAction
 
 from aide.core.context import Context
+from aide.plugin_system.infrastructure.command_catalog import add_notes
+
+_SEMGREP_NOTES = """
+Requires semgrep (pip install semgrep). Patterns use semgrep metavariables ($X, $Y, ...);
+always single-quote them in the shell. --lang: python, kotlin, typescript, javascript, java, go, rust, ruby, ...
+  aide structural-search --pattern 'if $X: return $X' --lang python --root src/
+  aide structural-replace --pattern 'old_api($X)' --rewrite 'new_api($X)' --lang python --dry-run
+"""
+
+_SEMGREP_REPLACE_NOTES = """
+See `aide structural-search --help` for pattern syntax and examples.
+"""
 from aide.features.structural_search.domain.ports import SemgrepRunnerPort
 
 
@@ -14,6 +26,7 @@ class StructuralSearchPlugin:
         p.add_argument("--pattern", required=True, help="Semgrep pattern, e.g. 'if $X: return $X'")
         p.add_argument("--lang", required=True, help="Language: python, kotlin, typescript, java, go, ...")
         p.add_argument("--root", default=".", help="Root directory to search (default: .)")
+        add_notes(p, _SEMGREP_NOTES)
         p.set_defaults(func=lambda args: self._handle_search(args, context))
 
         p = subparsers.add_parser("structural-replace", help="AST-aware pattern replace via semgrep")
@@ -22,6 +35,7 @@ class StructuralSearchPlugin:
         p.add_argument("--lang", required=True, help="Language")
         p.add_argument("--root", default=".", help="Root directory (default: .)")
         p.add_argument("--dry-run", action="store_true", help="Preview changes without writing to disk")
+        add_notes(p, _SEMGREP_REPLACE_NOTES)
         p.set_defaults(func=lambda args: self._handle_replace(args, context))
 
     def _handle_search(self, args, context: Context) -> None:

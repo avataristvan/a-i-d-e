@@ -7,6 +7,8 @@ from aide.core.context import Context
 class PluginLoader:
     def __init__(self, plugin_dir: str):
         self.plugin_dir = plugin_dir
+        # Command name -> feature folder that registered it (e.g. "move-symbol" -> "code_refactoring").
+        self.categories: dict[str, str] = {}
 
     def load_plugins(self, subparsers: _SubParsersAction, context: Context) -> None:
         if not os.path.exists(self.plugin_dir):
@@ -56,7 +58,11 @@ class PluginLoader:
                                     try:
                                         plugin_instance = attribute()
                                         if hasattr(plugin_instance, 'register') and inspect.ismethod(plugin_instance.register):
+                                            before = set(subparsers.choices)
                                             plugin_instance.register(subparsers, context)
+                                            category = os.path.relpath(root, self.plugin_dir).split(os.sep)[0]
+                                            for command in set(subparsers.choices) - before:
+                                                self.categories[command] = category
                                     except Exception as e:
                                         print(f"Failed to register plugin {module_name}: {e}")
                     except Exception as e:

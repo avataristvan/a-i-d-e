@@ -12,6 +12,7 @@ from aide.core.infrastructure.os_file_system import OsFileSystem
 from aide.parsing.infrastructure.parsers import RegexLanguageParser, CompositeLanguageParser
 from aide.parsing.infrastructure.ast_parsers import AstPythonParser
 from aide.plugin_system.infrastructure.plugin_loader import PluginLoader
+from aide.plugin_system.infrastructure.command_catalog import register_commands_command
 
 def main():
     parser = argparse.ArgumentParser(description="a-i-d-e: Agent Interface for Deterministic Editing")
@@ -60,6 +61,7 @@ def main():
     plugin_dir = os.path.join(os.path.dirname(__file__), "aide", "features")
     loader = PluginLoader(plugin_dir)
     loader.load_plugins(subparsers, context)
+    register_commands_command(subparsers, loader.categories)
 
     args = parser.parse_args()
 

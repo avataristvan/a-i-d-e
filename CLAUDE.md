@@ -69,7 +69,7 @@ All refactoring commands support `--dry-run` and `--verify` (runs tests, auto-re
 1. Create a Use Case class with `execute(self, ...)` in `aide/features/<domain>/application/`
 2. Resolve dependencies from `Context` in the constructor
 3. Bind to argparse in `aide/features/<domain>/plugin.py`
-4. Update `setup-files/gemini-global-aide/SKILL.md` so agents discover it
+4. Give the parser a precise `help=` one-liner (shown by `aide commands <category>`) and put usage notes in `add_notes(parser, ...)` (shown by `aide <command> --help`). Agents discover commands through the CLI, so the SKILL.md files stay short and list no commands.
 
 ### Testing patterns
 
