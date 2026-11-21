@@ -159,7 +159,7 @@ def test_move_symbol_full_flow(symbol_project):
     assert "import { type Config, helperValue } from '@/shared/config';" in dest  # alias style kept
 
     src = read(root, "src/engine/core.ts")
-    assert "import { type Voice } from './voices/voice';" in src  # back-import, type-only
+    assert "import { type Voice } from '@/engine/voices/voice';" in src  # back-import, type-only, alias like the file
     assert "import { unused } from 'tone';" in src                  # Tone no longer needed here
     assert "@/shared/config" not in src
     assert "makeVoice" not in src and "let counter" not in src
@@ -235,3 +235,89 @@ def test_move_file_rejects_colliding_targets_and_moves_nothing(project):
     write(project, "src/b/util.ts", "export const v = 1;\n")
     plan = MoveEsmFileUseCase(OsFileSystem(jailed_root=project)).plan(["src/a/util.ts", "src/b/util.ts"], "src/c", project)
     assert plan.errors and not plan.edits
+
+
+COLLIDING = """\
+import { useState } from 'react';
+import { Button } from '@/shared/ui/button';
+import { PlayerMapping } from '@/modules/gesture/domain/player-mappings';
+
+export interface MappingControls {
+  mapping: PlayerMapping;
+}
+
+export const initialMappingState: MappingControls = { mapping: 'a' };
+
+interface MappingControlsProps {
+  label: string;
+}
+
+export function MappingControls({ label }: MappingControlsProps) {
+  const [state] = useState<MappingControls>(initialMappingState);
+  return <Button>{label}{state.mapping}</Button>;
+}
+"""
+
+
+@pytest.fixture
+def colliding_project(project):
+    write(project, "src/modules/gesture/domain/player-mappings.ts", "export type PlayerMapping = 'a' | 'b';\n")
+    write(project, "src/shared/ui/button.tsx", "export function Button(p: any) { return null; }\n")
+    write(project, "src/modules/gesture/ui/mapping-controls.tsx", COLLIDING)
+    write(project, "src/modules/gesture/ui/page.tsx",
+          "import { MappingControls, type MappingControls as MC } from './mapping-controls';\n")
+    return project
+
+
+def test_move_symbol_same_name_requires_kind(colliding_project):
+    root = colliding_project
+    uc = MoveEsmSymbolUseCase(OsFileSystem(jailed_root=root))
+    with pytest.raises(MoveSymbolError) as err:
+        uc.plan("src/modules/gesture/ui/mapping-controls.tsx", ["MappingControls"],
+                "src/modules/gesture/domain/mapping-state.ts", root)
+    assert "function:MappingControls or interface:MappingControls" in str(err.value)
+    assert err.value.warnings and "name collision" in err.value.warnings[0]
+
+
+def test_move_symbol_picks_interface_of_same_named_component(colliding_project):
+    root = colliding_project
+    fs = OsFileSystem(jailed_root=root)
+    plan = MoveEsmSymbolUseCase(fs).plan("src/modules/gesture/ui/mapping-controls.tsx",
+                                         ["interface:MappingControls", "initialMappingState"],
+                                         "src/modules/gesture/domain/mapping-state.ts", root)
+    assert plan.helpers == []
+    assert any("name collision" in w for w in plan.warnings)
+    plan.apply(fs)
+
+    dest = read(root, "src/modules/gesture/domain/mapping-state.ts")
+    assert dest.startswith("import { PlayerMapping } from '@/modules/gesture/domain/player-mappings';\n")
+    assert "export interface MappingControls" in dest and "export const initialMappingState" in dest
+    assert "function" not in dest and "react" not in dest and "button" not in dest
+
+    src = read(root, "src/modules/gesture/ui/mapping-controls.tsx")
+    assert "import { type MappingControls, initialMappingState } from '@/modules/gesture/domain/mapping-state';" in src
+    assert "export function MappingControls" in src and "interface MappingControlsProps" in src
+    assert "player-mappings" not in src
+
+    assert read(root, "src/modules/gesture/ui/page.tsx") == (
+        "import { MappingControls } from './mapping-controls';\n"
+        "import { type MappingControls as MC } from '../domain/mapping-state';\n")
+
+
+def test_move_file_keeps_dotted_stems_extensionless(project):
+    root = project
+    write(root, "src/dom/shared/g.types.ts", "export type T = 1;\n")
+    write(root, "src/dom/main/main.types.ts", "export type M = 2;\n")
+    write(root, "src/dom/main/old.js.ts", "export const o = 1;\n")
+    write(root, "src/dom/main/main.ts",
+          "import { T } from '@/dom/shared/g.types';\nimport { M } from './main.types';\nimport { o } from './old.js';\n")
+    fs = OsFileSystem(jailed_root=root)
+    plan = MoveEsmFileUseCase(fs).plan(["src/dom/main/main.ts"], "src/infra/main", root)
+    preview = plan.preview(root)
+    plan.apply(fs)
+    moved = read(root, "src/infra/main/main.ts")
+    assert moved == ("import { T } from '@/dom/shared/g.types';\n"
+                     "import { M } from '../../dom/main/main.types';\n"
+                     "import { o } from '../../dom/main/old.js';\n")
+    afters = [e["after"] for es in preview["edits"].values() for e in es if "after" in e]
+    assert all(a in moved for a in afters)  # dry-run shows exactly what is written

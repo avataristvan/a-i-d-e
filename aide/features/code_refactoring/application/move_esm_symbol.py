@@ -18,7 +18,9 @@ from aide.features.code_refactoring.application.esm import (
 
 
 class MoveSymbolError(ValueError):
-    pass
+    def __init__(self, message: str, warnings: list[str] | None = None) -> None:
+        super().__init__(message)
+        self.warnings = warnings or []
 
 
 @dataclass
@@ -53,9 +55,9 @@ def _render_import(kind: str, type_only: bool, default: str | None, namespace: s
     return f"{head}{', '.join(clause)} from {quote}{spec}{quote};"
 
 
-def _names_import(names: list[str], by_name: dict[str, list[Declaration]], spec: str, quote: str) -> str:
+def _names_import(names: list[str], is_type: dict[str, bool], spec: str, quote: str) -> str:
     """`import { A, type B }` with inline `type` for interfaces/type aliases (isolatedModules-safe)."""
-    parts = [("type " if all(d.is_type for d in by_name[n]) else "") + n for n in names]
+    parts = [("type " if is_type[n] else "") + n for n in names]
     return _render_import("import", False, None, None, parts, spec, quote)
 
 
@@ -105,59 +107,96 @@ class MoveEsmSymbolUseCase:
         refs = scan(text)
         decls = top_level_declarations(text)
         by_name: dict[str, list[Declaration]] = {}
-        for d in decls:
+        idx_of: dict[str, set[int]] = {}
+        for i, d in enumerate(decls):
             by_name.setdefault(d.name, []).append(d)
+            idx_of.setdefault(d.name, set()).add(i)
 
-        requested = list(dict.fromkeys(symbols))
-        for name in requested:
+        # selection: `Name` or `kind:Name`; a name declared with several kinds needs the kind
+        selected: list[int] = []
+        requested: list[str] = []
+        for sym in dict.fromkeys(symbols):
+            kind, _, name = sym.rpartition(":")
             if name not in by_name:
                 raise MoveSymbolError(f"Top-level declaration '{name}' not found in {source}")
-            if any(d.default for d in by_name[name]):
+            cands = sorted(idx_of[name])
+            kinds = sorted({decls[i].kind for i in cands})
+            if kind:
+                cands = [i for i in cands if decls[i].kind == kind]
+                if not cands:
+                    raise MoveSymbolError(f"'{name}' is not declared as {kind} in {source} (found: {', '.join(kinds)})")
+            elif len(kinds) > 1:
+                listed = [f"{decls[i].kind}:{name} (line {line_of(text, decls[i].keyword)})" for i in cands]
+                raise MoveSymbolError(f"'{name}' is declared {len(cands)} times ({', '.join(kinds)}); choose with "
+                                      f"{' or '.join(f'{k}:{name}' for k in kinds)}",
+                                      warnings=[f"name collision: {', '.join(listed)}"])
+            if any(decls[i].default for i in cands):
                 raise MoveSymbolError(f"'{name}' is a default export; moving default exports is not supported")
+            selected += [i for i in cands if i not in selected]
+            if name not in requested:
+                requested.append(name)
 
         dest_text = self.fs.read_file(dst) if self.fs.path_exists(dst) else None
         dest_body = dest_text or ""
         dest_refs = scan(dest_body)
         dest_decl_names = {d.name for d in top_level_declarations(dest_body)}
 
-        # identifier usage: per declaration, plus everything outside declarations and imports
-        ids_of = {n: set().union(*(identifiers(masked, d.start, d.end) for d in ds)) for n, ds in by_name.items()}
+        # identifier usage per declaration (its own name excluded), plus everything outside declarations and imports
+        def decl_ids(d: Declaration) -> set[str]:
+            body = masked[d.start:d.end]
+            k = d.name_at - d.start
+            return identifiers(body[:k] + " " * len(d.name) + body[k + len(d.name):])
+        ids_of = [decl_ids(d) for d in decls]
         import_ranges = [(r.start, r.end) for r in refs if r.kind != "call"]
         rest_ids = identifiers(blank_ranges(masked, [(d.start, d.end) for d in decls] + import_ranges))
 
-        def ids_inside(names: set[str]) -> set[str]:
-            return set().union(*(ids_of[n] for n in names))
+        def ids_inside(idx: set[int]) -> set[str]:
+            return set().union(*(ids_of[i] for i in idx))
 
-        def ids_outside(names: set[str]) -> set[str]:
-            return rest_ids | ids_inside(by_name.keys() - names)
+        def ids_outside(idx: set[int]) -> set[str]:
+            return rest_ids | ids_inside(set(range(len(decls))) - idx)
 
         # non-exported helpers used only by the moved code travel with it
-        moving = set(requested)
+        moving = set(selected)
         helpers: list[str] = []
         changed = True
         while changed:
             changed = False
-            for h in sorted(ids_inside(moving) & by_name.keys() - moving):
-                if not any(d.exported for d in by_name[h]) and h not in ids_outside(moving | {h}):
-                    moving.add(h)
+            for h in sorted(ids_inside(moving) & by_name.keys()):
+                h_idx = idx_of[h]
+                if h_idx <= moving or any(d.exported for d in by_name[h]):
+                    continue
+                if h not in ids_outside(moving | h_idx):
+                    moving |= h_idx
                     helpers.append(h)
                     changed = True
 
-        clash = sorted(moving & dest_decl_names)
+        moved_names = {decls[i].name for i in moving}
+        staying_of = {n: [decls[i] for i in idx_of[n] - moving] for n in moved_names}
+        clash = sorted(moved_names & dest_decl_names)
         if clash:
             raise MoveSymbolError(f"Destination already declares: {', '.join(clash)}")
 
         plan = SymbolMovePlan(symbols=requested, helpers=helpers)
-        moving_decls = sorted((d for n in moving for d in by_name[n]), key=lambda d: d.start)
+        moving_decls = sorted((decls[i] for i in moving), key=lambda d: d.start)
+        moved_is_type = {n: all(d.is_type for d in moving_decls if d.name == n) for n in moved_names}
+        collided = {n for n in moved_names if staying_of[n]}
+        for n in sorted(collided):
+            gone = ", ".join(sorted({d.kind for d in moving_decls if d.name == n}))
+            kept = ", ".join(sorted({d.kind for d in staying_of[n]}))
+            plan.warnings.append(f"name collision: {gone} {n} moves, {kept} {n} stays in the source"
+                                 + ("; importers of the value keep pointing to the source" if moved_is_type[n] else ""))
         used_by_moved = ids_inside(moving)
         used_by_rest = ids_outside(moving)
-        stays_needed = sorted(used_by_moved & by_name.keys() - moving)
+        stays_needed = sorted(n for n in used_by_moved & by_name.keys() if n not in moved_names)
         dest_locals = dest_decl_names | {b.local for r in dest_refs for b in r.named} | {
             x for r in dest_refs for x in (r.default, r.namespace) if x}
         src_edits: list[TextEdit] = []
         dest_edits: list[TextEdit] = []
         dest_import_lines: list[str] = []
         quote = _quote_of(dest_refs, _quote_of(refs))
+        src_specs = [r.spec for r in refs if r.kind != "call"]
+        dest_specs = [r.spec for r in dest_refs if r.kind != "call"] or src_specs
 
         # 1. moved blocks: requested symbols get `export`, relative dynamic imports re-pointed
         blocks = []
@@ -205,17 +244,18 @@ class MoveEsmSymbolUseCase:
 
         # declarations that stay in the source but are used by moved code
         if stays_needed:
-            dest_import_lines.append(_names_import(stays_needed, by_name, resolver.relative_specifier(src, dst), quote))
+            types = {n: all(d.is_type for d in by_name[n]) for n in stays_needed}
+            dest_import_lines.append(_names_import(stays_needed, types, resolver.added_specifier(src, dst, dest_specs), quote))
             src_edits += [TextEdit(d.keyword, d.keyword, "export ", "now imported by destination")
                           for n in stays_needed for d in by_name[n] if not d.exported]
             plan.warnings.append(f"{os.path.relpath(dst, root_abs)} imports {', '.join(stays_needed)} from the source: "
                                  "circular import between source and destination")
 
-        # 3. back-import where the source still uses moved names
+        # 3. back-import where the source still uses moved names (`type` when a same-named value stays)
         back = [n for n in requested if n in used_by_rest]
         if back:
             at = _insertion_point(text, refs)
-            line = _names_import(back, by_name, resolver.relative_specifier(dst, src), _quote_of(refs)) + "\n"
+            line = _names_import(back, moved_is_type, resolver.added_specifier(dst, src, src_specs), _quote_of(refs)) + "\n"
             src_edits.append(TextEdit(at, at, line, "back-import of moved symbol still used here"))
 
         # 4. destination
@@ -237,12 +277,13 @@ class MoveEsmSymbolUseCase:
             plan.add(dst, dest_body, e)
 
         # 5. importers / re-exporters across the project
-        exported_moved = {n for n in requested if any(d.exported for d in by_name[n])}
+        exported_moved = {n: moved_is_type[n] for n in requested
+                          if any(d.exported for d in moving_decls if d.name == n)}
         if exported_moved:
             for path in iter_esm_files(self.fs, root_abs):
                 if path != src:
                     self._plan_importer(plan, resolver, root_abs, path, dest_body if path == dst else self.fs.read_file(path),
-                                        src, dst, exported_moved)
+                                        src, dst, exported_moved, collided)
         return plan
 
     @staticmethod
@@ -257,7 +298,8 @@ class MoveEsmSymbolUseCase:
 
     @staticmethod
     def _plan_importer(plan: SymbolMovePlan, resolver: ModuleResolver, root: str, path: str, text: str,
-                       src: str, dst: str, moved: set[str]) -> None:
+                       src: str, dst: str, moved: dict[str, bool], collided: set[str]) -> None:
+        """`moved` maps each moved name to whether only its type meaning moves."""
         masked = None
         for r in scan(text):
             if resolver.resolve(r.spec, path) != src:
@@ -269,9 +311,20 @@ class MoveEsmSymbolUseCase:
                 plan.warn(root, path, text, r.start, "`export *` from the source no longer re-exports the moved symbols")
             if r.namespace:
                 masked = masked or mask_code(text)
-                if moved & {m.group(1) for m in re.finditer(rf"\b{re.escape(r.namespace)}\.([\w$]+)", masked)}:
+                if moved.keys() & {m.group(1) for m in re.finditer(rf"\b{re.escape(r.namespace)}\.([\w$]+)", masked)}:
                     plan.warn(root, path, text, r.start, f"namespace import '{r.namespace}' uses moved symbols; not rewritten")
-            moved_b = [b for b in r.named if b.imported in moved]
+            moved_b = []
+            for b in r.named:
+                if b.imported not in moved:
+                    continue
+                if b.imported in collided:
+                    # a type-only binding means the type, a plain one most likely the value
+                    if b.is_type != moved[b.imported]:
+                        continue
+                    if not b.is_type:
+                        plan.warn(root, path, text, r.start, f"'{b.imported}' has a moved and a staying declaration; "
+                                                             "rewritten to the destination, check type vs. value use")
+                moved_b.append(b)
             if not moved_b:
                 continue
             if path == dst:

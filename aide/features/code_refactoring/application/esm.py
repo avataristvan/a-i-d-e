@@ -358,6 +358,15 @@ class ModuleResolver:
         stem = os.path.splitext(target)[0]
         return self._relative(stem[:-2] if stem.endswith(".d") else stem, from_file)
 
+    def added_specifier(self, target: str, from_file: str, sibling_specs: list[str]) -> str:
+        """Extensionless specifier for an import AIDE adds, in the alias style when the file already uses aliases."""
+        if any(self.classify(s) == "alias" for s in sibling_specs):
+            stem = os.path.splitext(target)[0]
+            aliased = self._alias_path(stem[:-2] if stem.endswith(".d") else stem)
+            if aliased:
+                return aliased
+        return self.relative_specifier(target, from_file)
+
     @staticmethod
     def _relative(path: str, from_file: str) -> str:
         rel = os.path.relpath(path, os.path.dirname(from_file)).replace(os.sep, "/")
@@ -371,6 +380,13 @@ class ModuleResolver:
             stem, ext = stem[:-2], ".d" + ext
         old_base = old_spec.rstrip("/").rsplit("/", 1)[-1]
         old_ext = os.path.splitext(old_base)[1]
+        if old_target is not None:  # `x.types` is a stem, not a file with extension `.types`
+            target_base = os.path.basename(old_target)
+            target_stem = os.path.splitext(target_base)[0].removesuffix(".d")
+            if old_base != target_base and not (old_ext in _JS_TO_TS and os.path.splitext(old_base)[0] == target_stem):
+                old_ext = ""
+        elif old_ext not in _RESOLVE_EXTENSIONS + (".json",):
+            old_ext = ""
         old_was_index = (old_target is not None and os.path.splitext(os.path.basename(old_target))[0] == "index"
                          and not old_base.startswith("index"))
         if old_was_index and os.path.basename(stem) == "index":
@@ -474,6 +490,7 @@ class Declaration:
     start: int         # incl. leading JSDoc/comments/decorators, at line start
     keyword: int       # offset of `export`/keyword on the declaration line
     end: int           # after the trailing newline
+    name_at: int = -1  # offset of the declared name
 
     @property
     def is_type(self) -> bool:
@@ -534,7 +551,7 @@ def top_level_declarations(text: str) -> list[Declaration]:
                 nl = m.find("\n", end)
                 end = n if nl == -1 else nl + 1
                 decls.append(Declaration(dm.group("name"), kind, bool(dm.group("export")), bool(dm.group("default")),
-                                         _leading_comment_start(text, i), i, end))
+                                         _leading_comment_start(text, i), i, end, dm.start("name")))
                 i = end
                 at_line_start = True
                 continue

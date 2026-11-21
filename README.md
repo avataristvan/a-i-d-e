@@ -37,6 +37,8 @@ The installer copies AIDE to `~/.local/share/aide`, creates an `aide` shim in `~
 - **Claude Code:** installs the skill to `~/.claude/skills/aide` ([source](./setup-files/claude-global-aide/SKILL.md)).
 - **Gemini CLI:** prepares the extension manifest; the installer prints the two commands to copy it to `~/.gemini/extensions/aide-extension` ([source](./setup-files/gemini-global-aide/)).
 
+The `aide` shim runs that installed copy, not your clone: re-run the installer after changing the code. In a non-interactive shell, pass the target as an argument (`python3 scripts/install_global.py claude`).
+
 **Project-local alternative:** copy the repository into your project and add [setup-files/project-injection/SKILL.md](./setup-files/project-injection/SKILL.md) to the project's agent rules.
 
 Verify:

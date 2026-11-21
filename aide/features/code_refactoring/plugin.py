@@ -36,7 +36,7 @@ class RefactorPlugin:
 
         # aide refactor move-symbol
         move_parser = subparsers.add_parser("move-symbol", help="Move top-level symbol to another file")
-        move_parser.add_argument("symbol", help="Symbol name (Function, Class, Object)")
+        move_parser.add_argument("symbol", help="Symbol name(s), comma-separated (Function, Class, Object); TS/JS: kind:Name picks one of several same-named declarations")
         move_parser.add_argument("--source", required=True, help="Source file path")
         move_parser.add_argument("--dest", required=True, help="Destination file path")
         move_parser.add_argument("--root", default=".", help="Project root")
@@ -151,7 +151,7 @@ class RefactorPlugin:
         try:
             plan = MoveEsmSymbolUseCase(context.file_system).plan(args.source, symbols, args.dest, args.root)
         except MoveSymbolError as e:
-            print(json.dumps({"success": False, "message": str(e), "data": {"symbol": args.symbol, "dry_run": args.dry_run}}, indent=2))
+            print(json.dumps({"success": False, "message": str(e), "data": {"symbol": args.symbol, "dry_run": args.dry_run, "warnings": e.warnings}}, indent=2))
             return
         success, reverted, message = self._apply_esm_plan(args, context, plan)
         result = {
