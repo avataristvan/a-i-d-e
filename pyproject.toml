@@ -31,4 +31,7 @@ search = [
 packages = ["aide"]
 
 [tool.pytest.ini_options]
+[tool.setuptools.package-data]
+aide = ["**/*.cjs"]
+
 testpaths = ["tests"]

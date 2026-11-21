@@ -2,10 +2,13 @@ import os
 import re
 from aide.core.domain.ports import FileSystemPort
 from aide.core.domain.models import OperationResult
+from typing import Callable
 
 class SmartRenameUseCase:
-    def __init__(self, file_system: FileSystemPort):
+    def __init__(self, file_system: FileSystemPort,
+                 file_filter: Callable[[str, list[str]], tuple[list[str], list[str]]] | None = None):
         self.file_system = file_system
+        self._file_filter = file_filter
 
     def execute(self, root_path: str, old_text: str, new_text: str, use_word_boundary: bool = False, dry_run: bool = False) -> OperationResult:
         files_changed = 0
@@ -18,7 +21,11 @@ class SmartRenameUseCase:
             else:
                 pattern = re.compile(re.escape(old_text))
             
-            for file_path in self.file_system.walk_files(root_path):
+            # Nested worktrees (e.g. .claude/worktrees/agent-*) and gitignored files are not part of the project.
+            files = list(self.file_system.walk_files(root_path))
+            if self._file_filter:
+                files, _ = self._file_filter(root_path, files)
+            for file_path in files:
                 # Only check relevant file types
                 if not file_path.endswith((".kt", ".java", ".xml", ".gradle", ".gradle.kts", ".toml", ".py", ".md", ".ts", ".tsx", ".js", ".jsx", ".cs", ".rs", ".go", ".c", ".cpp", ".cc", ".h", ".hpp", ".scala", ".rb")):
                     continue

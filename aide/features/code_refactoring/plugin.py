@@ -45,10 +45,14 @@ class RefactorPlugin:
         move_parser.set_defaults(func=lambda args: self.handle_move_symbol(args, context))
 
         # aide refactor rename-symbol
-        rename_parser = subparsers.add_parser("rename-symbol", help="Rename symbol project-wide")
+        rename_parser = subparsers.add_parser("rename-symbol", help="Rename symbol project-wide (semantic for TS/JS with --file, else word-boundary text)")
         rename_parser.add_argument("old_symbol", help="Current symbol name")
         rename_parser.add_argument("new_symbol", help="New symbol name")
         rename_parser.add_argument("--root", default=".", help="Project root")
+        rename_parser.add_argument("--file", help="File containing the symbol; TS/JS files get a semantic rename via the project's TypeScript")
+        rename_parser.add_argument("--line", type=int, help="1-based line of the symbol in --file (disambiguates same-named symbols)")
+        rename_parser.add_argument("--in-strings", action="store_true", help="Semantic rename: also rename matching occurrences in strings")
+        rename_parser.add_argument("--in-comments", action="store_true", help="Semantic rename: also rename matching occurrences in comments")
         rename_parser.add_argument("--dry-run", "-n", action="store_true", help="Preview changes without writing to files")
         rename_parser.add_argument("--verify", action="store_true", help="Automatically run tests and revert changes if they fail")
         rename_parser.set_defaults(func=lambda args: self.handle_rename_symbol(args, context))
@@ -226,11 +230,19 @@ class RefactorPlugin:
 
     def handle_rename_symbol(self, args, context: Context):
         from aide.features.code_refactoring.application.smart_rename import SmartRenameUseCase
-        
+        from aide.features.code_refactoring.application.semantic_rename import is_ts_js_file
+
+        if getattr(args, "file", None):
+            if not is_ts_js_file(args.file):
+                print(json.dumps({"success": False, "message": "Semantic rename (--file) supports TS/JS only; omit --file for a word-boundary text rename.", "data": {}}, indent=2))
+                return
+            return self._handle_semantic_rename(args, context)
+
         reverted = False
         if getattr(args, "verify", False): context.file_system.start_transaction()
         
-        use_case = SmartRenameUseCase(context.file_system)
+        from aide.features.code_refactoring.infrastructure.project_files import filter_project_files
+        use_case = SmartRenameUseCase(context.file_system, file_filter=filter_project_files)
         res = use_case.execute(args.root, args.old_symbol, args.new_symbol, use_word_boundary=True, dry_run=args.dry_run)
         
         if res.success:
@@ -246,6 +258,39 @@ class RefactorPlugin:
                 "total_replacements": res.total_replacements,
                 "old_symbol": args.old_symbol,
                 "new_symbol": args.new_symbol,
+                "reverted": reverted
+            }
+        }
+        print(json.dumps(result, indent=2))
+
+    def _handle_semantic_rename(self, args, context: Context):
+        from aide.features.code_refactoring.application.semantic_rename import SemanticRenameUseCase
+        from aide.features.code_refactoring.infrastructure.ts_rename_runner import find_rename_locations
+
+        reverted = False
+        if getattr(args, "verify", False): context.file_system.start_transaction()
+
+        res = SemanticRenameUseCase(context.file_system, find_rename_locations).execute(
+            args.root, args.file, args.old_symbol, args.new_symbol, line=args.line,
+            in_strings=args.in_strings, in_comments=args.in_comments, dry_run=args.dry_run)
+
+        if res.success:
+            success, reverted, msg = self._verify_and_commit(args, context, args.root)
+            res.success = success
+            if msg: res.message = msg
+
+        result = {
+            "success": res.success,
+            "message": "Preview (No changes made)" if args.dry_run and res.success else res.message,
+            "data": {
+                "mode": "semantic",
+                "engine": res.engine,
+                "files_changed": res.files_changed,
+                "total_replacements": res.total_replacements,
+                "old_symbol": args.old_symbol,
+                "new_symbol": args.new_symbol,
+                "changes": res.changes,
+                "skipped_files": res.skipped,
                 "reverted": reverted
             }
         }

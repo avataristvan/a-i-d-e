@@ -95,11 +95,13 @@ Always use single quotes around patterns in the shell to prevent `$X` from being
 
 **TypeScript/JavaScript (ES modules):** `move-symbol` and `move-file` resolve imports like the compiler: tsconfig `paths` aliases (`@/…`), relative paths, either quote style, multi-symbol and `type` imports, `export … from`, dynamic `import()`, and `vi.mock`/`jest.mock` paths. Run them from the project root (where `tsconfig.json` lives). `move-symbol` accepts several comma-separated symbols. When a name is declared more than once (an interface and a component of the same name), pick one with `kind:Name` (`interface:Props`, `function:Props`); without it the command stops and lists the candidates in `data.warnings`. It also moves `let`/`const` declarations and the non-exported helpers that only the moved code uses, copies only the import bindings that code needs, splits importer statements that also import names which stay behind, and adds a back-import (`import { type X }` for interfaces and type aliases) where the source still uses a moved name. `move-file` takes a target file path as well as a directory, and rewrites the moved file's own relative imports. `-n` lists every planned edit per file under `data.edits`. Cases it cannot rewrite safely (namespace imports, `export *`, mocks of the source module) are reported in `data.warnings`.
 
+**`rename-symbol`:** with `--file` on a TS/JS file it is a semantic rename through the project's own TypeScript (needs `node` and typescript 5.x): the symbol at `--file` (first occurrence, or on `--line`) plus every reference that resolves to it, including imports, shorthand properties and destructuring through derived types. Same-named identifiers of other symbols stay; strings and comments only with `--in-strings` / `--in-comments`. Without `--file` it replaces on word boundaries under `--root`. Both modes skip gitignored files and nested git worktrees (`.claude/worktrees/agent-*`).
+
 ## Refactoring
 
 ```
 aide move-symbol <symbol[,symbol...]> --source <src> --dest <dest> [-n] [--verify]
-aide rename-symbol <old> <new> [--root <dir>] [-n] [--verify]
+aide rename-symbol <old> <new> [--root <dir>] [--file <path> [--line <n>]] [--in-strings] [--in-comments] [-n] [--verify]
 aide change-signature <symbol> --add-param <def> --default-value <val> [-n] [--verify]
 aide extract --file <path> --selection <start:end> --name <name> [--scope <s>] [-n] [--verify]
 aide extract-interface --file <path> --class-name <cls> [--interface-name <name>] [-n]

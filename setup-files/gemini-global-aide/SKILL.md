@@ -84,7 +84,10 @@ Refactor: Move top-level symbol to another file.
 
 ### `rename-symbol`
 Refactor: Rename symbol project-wide safely.
-- **Invoke**: `aide rename-symbol <old> <new> [--root <p>] [-n]`
+- **Invoke**: `aide rename-symbol <old> <new> [--root <p>] [--file <path> [--line <n>]] [--in-strings] [--in-comments] [-n] [--verify]`
+- **TS/JS with `--file`**: semantic rename through the project's own TypeScript language service (tsconfig and `paths` aliases). It renames the symbol at `--file` (first occurrence, or on `--line`) and every reference that resolves to it: imports and re-exports, object keys and shorthand properties, destructuring through derived types (`ReturnType<typeof useX>`), property access. Same-named identifiers of other symbols stay; strings and comments only with `--in-strings` / `--in-comments`. Needs `node` and typescript 5.x in the project. `-n` lists each edit under `data.changes`.
+- **Without `--file`**: word-boundary text replacement under `--root`.
+- Both modes skip gitignored files and nested git worktrees (e.g. `.claude/worktrees/agent-*`).
 
 ## Code Generation Tools
 
