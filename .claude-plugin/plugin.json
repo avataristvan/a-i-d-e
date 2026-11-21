@@ -1,0 +1,8 @@
+{
+  "name": "aide",
+  "version": "0.1.0",
+  "description": "Agent Interface for Deterministic Editing: deterministic multi-file refactoring (move, rename, extract, change-signature) with --verify auto-rollback, code inspection and test execution as JSON CLI. Ships the `aide` command and the aide skill.",
+  "author": {"name": "Istvan Lovas"},
+  "license": "MIT",
+  "keywords": ["claude-code", "refactoring", "cli", "typescript", "kotlin"]
+}

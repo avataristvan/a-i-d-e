@@ -1,0 +1,14 @@
+{
+  "name": "aide",
+  "owner": {
+    "name": "Istvan Lovas"
+  },
+  "plugins": [
+    {
+      "name": "aide",
+      "source": "./",
+      "description": "Deterministic multi-file refactoring CLI for agents, with --verify auto-rollback."
+    }
+  ],
+  "description": "AIDE as a Claude Code plugin, enabled per project."
+}

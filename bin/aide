@@ -1,0 +1,4 @@
+#!/bin/sh
+# Plugin shim: run AIDE from this plugin's copy with the system python3.
+# Dependencies (tree-sitter etc.) come from that python3's environment (pip install -e .).
+exec python3 "$(dirname "$0")/../aide.py" "$@"
