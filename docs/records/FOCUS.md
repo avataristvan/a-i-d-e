@@ -5,6 +5,6 @@ Now:
 
 Next:
 - Clean up pyright errors in aide/ (mostly Optional handling).
-- README.md: add clone-symbol, semantic rename-symbol, the Kotlin/clangd parsers and the LSP client (all committed now).
+- README.md: add clone-symbol, semantic rename-symbol, the Kotlin/clangd parsers, the LSP client and command discovery (`aide commands`, `aide <command> --help`).
 
 Backlog: BACKLOG.md.

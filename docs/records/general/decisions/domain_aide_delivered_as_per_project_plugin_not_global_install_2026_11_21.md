@@ -13,3 +13,4 @@ Scope: AIDE delivery on this machine. Evidence: ~/.bashrc; the enabling project'
 
 - supersedes: [learning_aide_global_shim_runs_installed_copy_2026_11_20](../learnings/learning_aide_global_shim_runs_installed_copy_2026_11_20.md)
 - derived_from: [learning_plugin_bin_on_path_only_where_plugin_enabled_2026_11_21](../learnings/learning_plugin_bin_on_path_only_where_plugin_enabled_2026_11_21.md)
+- related: [learning_plugin_skill_loads_from_cache_copy_needs_version_bump_2026_11_22](../learnings/learning_plugin_skill_loads_from_cache_copy_needs_version_bump_2026_11_22.md)

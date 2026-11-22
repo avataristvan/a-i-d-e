@@ -13,3 +13,4 @@ Evidence: headless sessions 2026-11-21: a project with the plugin enabled (PATH 
 
 - related: [learning_aide_global_shim_runs_installed_copy_2026_11_20](learning_aide_global_shim_runs_installed_copy_2026_11_20.md)
 - related: [domain_aide_delivered_as_per_project_plugin_not_global_install_2026_11_21](../decisions/domain_aide_delivered_as_per_project_plugin_not_global_install_2026_11_21.md)
+- related: [learning_plugin_skill_loads_from_cache_copy_needs_version_bump_2026_11_22](learning_plugin_skill_loads_from_cache_copy_needs_version_bump_2026_11_22.md)

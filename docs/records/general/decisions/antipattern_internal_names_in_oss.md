@@ -13,3 +13,4 @@ Instead: Use neutral placeholders (my-app, my-project) in all examples in the pu
 
 - related: [learning_internal_names_also_in_code_strings_2026_10_18](../learnings/learning_internal_names_also_in_code_strings_2026_10_18.md)
 - related: [learning_internal_names_also_in_generated_artifacts_2026_11_01](../learnings/learning_internal_names_also_in_generated_artifacts_2026_11_01.md)
+- related: [domain_records_in_public_repo_neutralise_internal_names_2026_11_22](domain_records_in_public_repo_neutralise_internal_names_2026_11_22.md)
